@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Sales Outreach Field Notes API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: businesses
+    description: Business prospect operations
+  - name: visits
+    description: Visit operations
+  - name: notes
+    description: Note operations
+  - name: media
+    description: Media upload operations
+  - name: stats
+    description: Summary and stats
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +34,402 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /businesses:
+    get:
+      operationId: listBusinesses
+      tags: [businesses]
+      summary: List all businesses
+      responses:
+        "200":
+          description: List of businesses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Business"
+    post:
+      operationId: createBusiness
+      tags: [businesses]
+      summary: Create a business
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBusinessBody"
+      responses:
+        "201":
+          description: Created business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  /businesses/{id}:
+    get:
+      operationId: getBusiness
+      tags: [businesses]
+      summary: Get a business by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+        "404":
+          description: Not found
+    put:
+      operationId: updateBusiness
+      tags: [businesses]
+      summary: Update a business
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBusinessBody"
+      responses:
+        "200":
+          description: Updated business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    delete:
+      operationId: deleteBusiness
+      tags: [businesses]
+      summary: Delete a business
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /businesses/{id}/visits:
+    get:
+      operationId: listVisitsForBusiness
+      tags: [visits]
+      summary: List visits for a business
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of visits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Visit"
+
+  /visits:
+    get:
+      operationId: listVisits
+      tags: [visits]
+      summary: List all visits
+      responses:
+        "200":
+          description: List of all visits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Visit"
+    post:
+      operationId: createVisit
+      tags: [visits]
+      summary: Create a visit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVisitBody"
+      responses:
+        "201":
+          description: Created visit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+
+  /visits/{id}:
+    get:
+      operationId: getVisit
+      tags: [visits]
+      summary: Get a visit with all notes and media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Visit with notes and media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitDetail"
+        "404":
+          description: Not found
+    put:
+      operationId: updateVisit
+      tags: [visits]
+      summary: Update a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVisitBody"
+      responses:
+        "200":
+          description: Updated visit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+    delete:
+      operationId: deleteVisit
+      tags: [visits]
+      summary: Delete a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /visits/{id}/notes:
+    get:
+      operationId: listNotesForVisit
+      tags: [notes]
+      summary: List notes for a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create a note for a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    put:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /visits/{id}/media:
+    get:
+      operationId: listMediaForVisit
+      tags: [media]
+      summary: List media for a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of media
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Media"
+    post:
+      operationId: uploadMedia
+      tags: [media]
+      summary: Upload media for a visit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                type:
+                  type: string
+                  enum: [image, voice_note, interview, document]
+                caption:
+                  type: string
+              required:
+                - file
+                - type
+      responses:
+        "201":
+          description: Uploaded media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+
+  /media/{id}:
+    delete:
+      operationId: deleteMedia
+      tags: [media]
+      summary: Delete a media item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /stats/summary:
+    get:
+      operationId: getSummaryStats
+      tags: [stats]
+      summary: Get summary stats for the dashboard
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryStats"
+
+  /stats/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [stats]
+      summary: Get recent visits activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /stats/by-sector:
+    get:
+      operationId: getVisitsBySector
+      tags: [stats]
+      summary: Get visit counts grouped by business sector
+      responses:
+        "200":
+          description: Visits by sector
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SectorCount"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +440,337 @@ components:
       required:
         - status
 
+    Business:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        sector:
+          type: string
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        notes:
+          type: string
+        mapsUrl:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        status:
+          type: string
+          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - sector
+        - status
+        - priority
+        - createdAt
+        - updatedAt
+
+    CreateBusinessBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        sector:
+          type: string
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        notes:
+          type: string
+        mapsUrl:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        status:
+          type: string
+          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+      required:
+        - name
+        - sector
+
+    Visit:
+      type: object
+      properties:
+        id:
+          type: integer
+        businessId:
+          type: integer
+        businessName:
+          type: string
+        visitedAt:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: [positive, neutral, negative, follow_up_needed]
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        nextActionDate:
+          type: string
+          format: date-time
+        noteCount:
+          type: integer
+        mediaCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - businessId
+        - visitedAt
+        - outcome
+        - noteCount
+        - mediaCount
+        - createdAt
+
+    VisitDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        businessId:
+          type: integer
+        businessName:
+          type: string
+        visitedAt:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: [positive, neutral, negative, follow_up_needed]
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        nextActionDate:
+          type: string
+          format: date-time
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - businessId
+        - visitedAt
+        - outcome
+        - notes
+        - media
+        - createdAt
+
+    CreateVisitBody:
+      type: object
+      properties:
+        businessId:
+          type: integer
+        visitedAt:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: [positive, neutral, negative, follow_up_needed]
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        nextActionDate:
+          type: string
+          format: date-time
+      required:
+        - businessId
+        - visitedAt
+        - outcome
+
+    UpdateVisitBody:
+      type: object
+      properties:
+        visitedAt:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: [positive, neutral, negative, follow_up_needed]
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        nextActionDate:
+          type: string
+          format: date-time
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        visitId:
+          type: integer
+        type:
+          type: string
+          enum: [text, voice]
+        content:
+          type: string
+        audioUrl:
+          type: string
+        durationSeconds:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - visitId
+        - type
+        - createdAt
+
+    CreateNoteBody:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [text, voice]
+        content:
+          type: string
+        audioUrl:
+          type: string
+        durationSeconds:
+          type: integer
+      required:
+        - type
+
+    Media:
+      type: object
+      properties:
+        id:
+          type: integer
+        visitId:
+          type: integer
+        type:
+          type: string
+          enum: [image, voice_note, interview, document]
+        url:
+          type: string
+        filename:
+          type: string
+        caption:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - visitId
+        - type
+        - url
+        - filename
+        - createdAt
+
+    SummaryStats:
+      type: object
+      properties:
+        totalBusinesses:
+          type: integer
+        totalVisits:
+          type: integer
+        visitsThisWeek:
+          type: integer
+        positiveOutcomes:
+          type: integer
+        followUpsNeeded:
+          type: integer
+        convertedCount:
+          type: integer
+        totalNotes:
+          type: integer
+        totalMedia:
+          type: integer
+      required:
+        - totalBusinesses
+        - totalVisits
+        - visitsThisWeek
+        - positiveOutcomes
+        - followUpsNeeded
+        - convertedCount
+        - totalNotes
+        - totalMedia
+
+    ActivityItem:
+      type: object
+      properties:
+        visitId:
+          type: integer
+        businessId:
+          type: integer
+        businessName:
+          type: string
+        sector:
+          type: string
+        outcome:
+          type: string
+        visitedAt:
+          type: string
+          format: date-time
+        noteCount:
+          type: integer
+        mediaCount:
+          type: integer
+      required:
+        - visitId
+        - businessId
+        - businessName
+        - sector
+        - outcome
+        - visitedAt
+        - noteCount
+        - mediaCount
+
+    SectorCount:
+      type: object
+      properties:
+        sector:
+          type: string
+        count:
+          type: integer
+        positiveCount:
+          type: integer
+      required:
+        - sector
+        - count
+        - positiveCount

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4-Day Route Plan — Minneapolis AI Agency Prospecting ⚡</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; padding: 16px; max-width: 900px; margin: 0 auto; }
+h1 { color: #facc15; font-size: 1.5rem; margin-bottom: 4px; }
+h2 { color: #38bdf8; font-size: 1.2rem; margin: 24px 0 8px; border-bottom: 2px solid #1e293b; padding-bottom: 4px; }
+h3 { color: #a78bfa; font-size: 1rem; margin: 16px 0 6px; }
+.subtitle { color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px; }
+.card { background: #1e293b; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 8px 0; }
+th { background: #334155; color: #facc15; padding: 8px 6px; text-align: left; font-size: 0.75rem; }
+td { padding: 7px 6px; border-bottom: 1px solid #1e293b; }
+tr:nth-child(even) td { background: #1a2332; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+.badge-green { background: #166534; color: #4ade80; }
+.badge-yellow { background: #854d0e; color: #fde047; }
+.badge-red { background: #991b1b; color: #fca5a5; }
+.badge-blue { background: #1e40af; color: #93c5fd; }
+a.gmap { color: #38bdf8; text-decoration: none; font-size: 0.75rem; }
+a.gmap:hover { text-decoration: underline; }
+a { color: #38bdf8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.time { color: #facc15; font-weight: 600; white-space: nowrap; }
+.tip { background: #1a2744; border-left: 3px solid #38bdf8; padding: 10px 14px; margin: 10px 0; font-size: 0.85rem; border-radius: 0 8px 8px 0; }
+.lunch { background: #422006; border-left: 3px solid #f97316; padding: 10px 14px; margin: 10px 0; font-size: 0.85rem; border-radius: 0 8px 8px 0; }
+.stars { color: #facc15; }
+.sector { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+.sector-roof { background: #7c2d12; color: #fb923c; }
+.sector-hvac { background: #1e3a5f; color: #60a5fa; }
+.sector-solar { background: #713f12; color: #fbbf24; }
+.sector-landscape { background: #14532d; color: #4ade80; }
+.sector-remodel { background: #581c87; color: #c084fc; }
+.sector-gc { background: #44403c; color: #d6d3d1; }
+</style>
+</head>
+<body>
+
+<h1>📍 4-Day Route Plan — Minneapolis AI Agency Prospecting</h1>
+<p class="subtitle">15 mid-size service businesses | Walk-in / call-ahead | Minneapolis + inner suburbs | April 2026</p>
+
+<div class="tip">
+<strong>⚡ Walk-in Strategy:</strong> Ask for the owner by name. If not available, ask for the operations manager or office manager. Get a direct cell number and the best time to reach the owner. Never pitch the receptionist — get a decision-maker or contact info.
+</div>
+
+<!-- ===================== DAY 1 ===================== -->
+<h2>Day 1 — North Minneapolis + Brooklyn Center + Columbia Heights</h2>
+<p class="subtitle">Focus: Industrial corridor along I-94 / University Ave NE</p>
+
+<div class="card">
+<h3>Stop 1 — Morning</h3>
+<table>
+<tr><th>Company</th><th>Address</th><th>Rating</th><th>Phone</th><th>Notes</th></tr>
+<tr>
+  <td><strong>Central Roofing Company</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>4550 Main St NE<br>Minneapolis, MN 55421</td>
+  <td class="stars">4.5⭐ (61)</td>
+  <td>(763) 572-0660</td>
+  <td>Commercial roofing since 1923. Established. Team page on website. <a class="gmap" href="https://maps.google.com/?cid=1111272801552340184" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Bolechowski Construction</strong><br><span class="sector sector-gc">GENERAL CONTRACTOR</span></td>
+  <td>3031 Croft Dr<br>Minneapolis, MN 55418</td>
+  <td class="stars">4.8⭐ (66)</td>
+  <td>(612) 965-1509</td>
+  <td>Construction + remodeling. Mid-size. <a class="gmap" href="https://maps.google.com/?cid=4676986517101676837" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Roof Repair PHD</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>3201 N Humboldt Ave<br>Minneapolis, MN 55412</td>
+  <td class="stars">5⭐ (54)</td>
+  <td>(612) 418-4240</td>
+  <td>Residential roofing. 5-star = high quality. <a class="gmap" href="https://maps.google.com/?cid=18040947368546163432" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Johnny Five Construction</strong><br><span class="sector sector-gc">GENERAL CONTRACTOR</span></td>
+  <td>338 24th Ave NE<br>Minneapolis, MN 55418</td>
+  <td class="stars">5⭐ (19)</td>
+  <td>(612) 293-5778</td>
+  <td>Smaller but growing. Good entry point. <a class="gmap" href="https://maps.google.com/?cid=18040947368546163432" target="_blank">📍 Map</a></td>
+</tr>
+</table>
+</div>
+
+<div class="lunch">🕐 Lunch break — grab food near University Ave NE</div>
+
+<div class="tip">
+<strong>🎯 Afternoon focus:</strong> Head south to Columbia Heights / NE Minneapolis area
+</div>
+
+<!-- ===================== DAY 2 ===================== -->
+<h2>Day 2 — South Minneapolis + Nokomis + Richfield</h2>
+<p class="subtitle">Focus: Established residential service companies south of downtown</p>
+
+<div class="card">
+<h3>Stop 1 — Morning</h3>
+<table>
+<tr><th>Company</th><th>Address</th><th>Rating</th><th>Phone</th><th>Notes</th></tr>
+<tr>
+  <td><strong>Garlock-French Corporation</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>2301 E 25th St<br>Minneapolis, MN 55406</td>
+  <td class="stars">4.7⭐ (143)</td>
+  <td>(612) 722-7129</td>
+  <td>Established roofing. "Corporation" = likely multi-manager. Sweet spot size. <a class="gmap" href="https://maps.google.com/?cid=13692711712261859388" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Nokomis Roofing</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>5053 36th Ave S<br>Minneapolis, MN 55417</td>
+  <td class="stars">4.7⭐ (58)</td>
+  <td>(612) 221-4736</td>
+  <td>Neighborhood roofing company. Good size. <a class="gmap" href="https://maps.google.com/?cid=8685256349586553152" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Liberte Construction</strong><br><span class="sector sector-remodel">REMODELING</span></td>
+  <td>1406 W Lake St Suite 202<br>Minneapolis, MN 55408</td>
+  <td class="stars">4.9⭐ (205)</td>
+  <td>(612) 712-6420</td>
+  <td>Strong reviews, established. Office on Lake St = real business. <a class="gmap" href="https://maps.google.com/?cid=3271339792345538938" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>3 Bears Landscaping</strong><br><span class="sector sector-landscape">LANDSCAPING</span></td>
+  <td>3916 Cheatham Ave<br>Minneapolis, MN 55406</td>
+  <td class="stars">4.8⭐ (179)</td>
+  <td>(612) 806-3012</td>
+  <td>Strong reviews. Landscaping = seasonal, could use AI for scheduling. <a class="gmap" href="https://3bearslandscaping.com/" target="_blank">📍 Map</a></td>
+</tr>
+</table>
+</div>
+
+<div class="lunch">🕐 Lunch break — Lake Street / Nokomis area</div>
+
+<!-- ===================== DAY 3 ===================== -->
+<h2>Day 3 — Bloomington + South Suburbs</h2>
+<p class="subtitle">Focus: Dense commercial corridor near I-494 / I-35W</p>
+
+<div class="card">
+<h3>Stop 1 — Morning</h3>
+<table>
+<tr><th>Company</th><th>Address</th><th>Rating</th><th>Phone</th><th>Notes</th></tr>
+<tr>
+  <td><strong>Twin Cities Contracting Services</strong><br><span class="sector sector-gc">GENERAL CONTRACTOR</span></td>
+  <td>140 W 98th St #202<br>Bloomington, MN 55420</td>
+  <td class="stars">5⭐ (485)</td>
+  <td>(952) 405-6201</td>
+  <td>485 reviews = serious business. Office suite = real operation. TOP TARGET. <a class="gmap" href="https://maps.google.com/?cid=2264026134366600485" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>R & R Roofing Inc.</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>8609 Lyndale Ave S<br>Bloomington, MN 55420</td>
+  <td class="stars">5⭐ (312)</td>
+  <td>(952) 210-4988</td>
+  <td>312 reviews, 5 stars. Lyndale Ave office = established. TOP TARGET. <a class="gmap" href="https://maps.google.com/?cid=1779344381757415722" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Snap Construction Inc.</strong><br><span class="sector sector-gc">GENERAL CONTRACTOR</span></td>
+  <td>951 American Blvd E<br>Minneapolis, MN 55420</td>
+  <td class="stars">4.9⭐ (419)</td>
+  <td>(612) 333-7627</td>
+  <td>419 reviews = mid-size, established. Near Bloomington border. TOP TARGET. <a class="gmap" href="https://www.snapconstruction.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Your Home Improvement Company</strong><br><span class="sector sector-remodel">HOME IMPROVEMENT</span></td>
+  <td>9555 James Ave S #250<br>Bloomington, MN 55431</td>
+  <td class="stars">4.7⭐ (584)</td>
+  <td>(952) 522-3088</td>
+  <td>Windows & bath specialization. 584 reviews = big operation. Suite 250 = office building. <a class="gmap" href="https://www.yourhomeimprovementco.com/" target="_blank">📍 Map</a></td>
+</tr>
+</table>
+</div>
+
+<div class="lunch">🕐 Lunch break — Bloomington / I-494 area</div>
+
+<!-- ===================== DAY 4 ===================== -->
+<h2>Day 4 — St. Louis Park + West Suburbs</h2>
+<p class="subtitle">Focus: Higher-end market, bigger budgets</p>
+
+<div class="card">
+<h3>Stop 1 — Morning</h3>
+<table>
+<tr><th>Company</th><th>Address</th><th>Rating</th><th>Phone</th><th>Notes</th></tr>
+<tr>
+  <td><strong>Sela Roofing & Remodeling</strong><br><span class="sector sector-roof">ROOFING + REMODELING</span></td>
+  <td>4521 MN-7 Suite A<br>Minneapolis, MN 55416</td>
+  <td class="stars">5⭐ (647)</td>
+  <td>(612) 482-8213</td>
+  <td>647 reviews, since 1982. MASSIVE target. Multi-service (roof + remodel). <a class="gmap" href="https://maps.google.com/?cid=15297467086839306215" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Minnesota Roofing Company</strong><br><span class="sector sector-roof">ROOFING</span></td>
+  <td>1071 County Hwy 10 Ste 230<br>Spring Lake Park, MN 55432</td>
+  <td class="stars">4.8⭐ (262)</td>
+  <td>(612) 888-7663</td>
+  <td>262 reviews, suite 230 = real office. Sweet spot size. <a class="gmap" href="https://maps.google.com/?cid=3330275434023154631" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td><strong>Blue Yeti HVAC & Plumbing</strong><br><span class="sector sector-hvac">HVAC + PLUMBING</span></td>
+  <td>6325 Cambridge St #2<br>St Louis Park, MN 55416</td>
+  <td class="stars">4.9⭐ (671)</td>
+  <td>(952) 209-7360</td>
+  <td>671 reviews, HVAC + plumbing. Multi-service = needs scheduling AI. TOP TARGET. <a class="gmap" href="https://maps.google.com/?cid=2264026134366600485" target="_blank">📍 Map</a></td>
+</tr>
+</table>
+</div>
+
+<div class="lunch">🕐 Lunch break — St. Louis Park area</div>
+
+<div class="tip">
+<strong>🎯 Afternoon option:</strong> If time permits, hit <strong>Stafford Home Service</strong> (6225 Cambridge St, Minneapolis, 4.9⭐ 1139 reviews) or <strong>Ray N. Welter Heating</strong> (4637 Chicago Ave, 4.8⭐ 199 reviews) on the way back.
+</div>
+
+<!-- ===================== BONUS STOPS ===================== -->
+<h2>🔥 10 Bonus Targets — Fill Gaps or Extend the Route</h2>
+<p class="subtitle">Additional mid-size service businesses to hit if time permits, or swap into any day</p>
+
+<div class="card">
+<table>
+<tr><th>#</th><th>Company</th><th>Type</th><th>Address</th><th>Rating</th><th>Phone</th><th>Why</th></tr>
+<tr>
+  <td>16</td>
+  <td><strong>Paris Painting</strong></td>
+  <td><span class="sector sector-remodel">PAINTING</span></td>
+  <td>3515 48th Ave N<br>Brooklyn Center, MN 55429</td>
+  <td class="stars">4.8⭐ (868)</td>
+  <td>(763) 515-4463</td>
+  <td>868 reviews = serious operation. Multiple crews. Fits Day 1 North route. <a class="gmap" href="https://paris-painting.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>17</td>
+  <td><strong>Roell Painting Company</strong></td>
+  <td><span class="sector sector-remodel">PAINTING</span></td>
+  <td>7301 Penn Ave S<br>Minneapolis, MN 55423</td>
+  <td class="stars">4.9⭐ (388)</td>
+  <td>(763) 559-5296</td>
+  <td>388 reviews, established painting company. Fits Day 2 South route. <a class="gmap" href="https://www.roellpainting.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>18</td>
+  <td><strong>Bratt Tree</strong></td>
+  <td><span class="sector sector-landscape">TREE SERVICE</span></td>
+  <td>2423 E 26th St<br>Minneapolis, MN 55406</td>
+  <td class="stars">4.8⭐ (440)</td>
+  <td>(612) 429-3904</td>
+  <td>440 reviews, tree service = scheduling + dispatch needs. Near Day 2 stops. <a class="gmap" href="https://www.bratttree.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>19</td>
+  <td><strong>Vineland Tree Care</strong></td>
+  <td><span class="sector sector-landscape">TREE SERVICE</span></td>
+  <td>2504 25th Ave S<br>Minneapolis, MN 55406</td>
+  <td class="stars">4.9⭐ (461)</td>
+  <td>(612) 872-0205</td>
+  <td>461 reviews, 4.9 stars. Right next to Bratt Tree — hit both. <a class="gmap" href="http://www.vinelandtree.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>20</td>
+  <td><strong>Edison Electric</strong></td>
+  <td><span class="sector sector-hvac">ELECTRICAL</span></td>
+  <td>3134 California St NE #126<br>Minneapolis, MN 55418</td>
+  <td class="stars">4.9⭐ (1029)</td>
+  <td>(612) 441-2728</td>
+  <td>1029 reviews! Major electrical contractor. Multi-crew operation. Fits Day 1. <a class="gmap" href="https://www.electrician-minneapolis.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>21</td>
+  <td><strong>Big Mike's Gutters</strong></td>
+  <td><span class="sector sector-roof">GUTTERS</span></td>
+  <td>235 N Irving Ave<br>Minneapolis, MN 55405</td>
+  <td class="stars">4.7⭐ (201)</td>
+  <td>(612) 275-2222</td>
+  <td>201 reviews, gutter specialist. Adjacent to roofing services. Fits Day 2 or 4. <a class="gmap" href="https://bigmikesgutters.net/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>22</td>
+  <td><strong>USA Insulation of Minneapolis</strong></td>
+  <td><span class="sector sector-remodel">INSULATION</span></td>
+  <td>8055 Ranchers Rd NE<br>Minneapolis, MN 55432</td>
+  <td class="stars">5⭐ (564)</td>
+  <td>(612) 767-3030</td>
+  <td>564 reviews, franchise location = likely multi-crew. Fits Day 3 Bloomington. <a class="gmap" href="https://usainsulation.com/minneapolis/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>23</td>
+  <td><strong>Harrison Electric</strong></td>
+  <td><span class="sector sector-hvac">ELECTRICAL</span></td>
+  <td>3440 Kilmer Ln N<br>Minneapolis, MN 55441</td>
+  <td class="stars">4.8⭐ (959)</td>
+  <td>(763) 544-3300</td>
+  <td>959 reviews, established electrical contractor. Multi-crew. Fits Day 4 west. <a class="gmap" href="https://harrison-electric.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><strong>Affordable Insulation</strong></td>
+  <td><span class="sector sector-remodel">INSULATION</span></td>
+  <td>951 American Blvd E<br>Bloomington, MN 55420</td>
+  <td class="stars">4.9⭐ (128)</td>
+  <td>(612) 435-2780</td>
+  <td>Same building as Snap Construction! Hit both in one stop. Day 3 Bloomington. <a class="gmap" href="http://www.affordableinsulationmn.com/" target="_blank">📍 Map</a></td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><strong>ONYX Plumbing & Gas</strong></td>
+  <td><span class="sector sector-hvac">PLUMBING</span></td>
+  <td>6325 Cambridge St #7<br>Minneapolis, MN 55416</td>
+  <td class="stars">4.9⭐ (115)</td>
+  <td>(612) 234-6699</td>
+  <td>Right next to Blue Yeti! Same building, different unit. Hit both Day 4. <a class="gmap" href="https://calltheonyx.com/" target="_blank">📍 Map</a></td>
+</tr>
+</table>
+</div>
+
+<!-- ===================== SUMMARY ===================== -->
+<h2>Summary — All 15 Targets Ranked by Priority</h2>
+
+<div class="card">
+<table>
+<tr><th>#</th><th>Company</th><th>Reviews</th><th>Type</th><th>Day</th><th>Why</th></tr>
+<tr><td>1</td><td>Sela Roofing & Remodeling</td><td class="stars">647</td><td>Roof + Remodel</td><td>4</td><td>Since 1982, multi-service, massive reviews</td></tr>
+<tr><td>2</td><td>Twin Cities Contracting</td><td class="stars">485</td><td>General Contractor</td><td>3</td><td>485 reviews, Bloomington office</td></tr>
+<tr><td>3</td><td>Snap Construction</td><td class="stars">419</td><td>General Contractor</td><td>3</td><td>419 reviews, established</td></tr>
+<tr><td>4</td><td>R & R Roofing</td><td class="stars">312</td><td>Roofing</td><td>3</td><td>5-star, 312 reviews, Bloomington</td></tr>
+<tr><td>5</td><td>Minnesota Roofing Co</td><td class="stars">262</td><td>Roofing</td><td>4</td><td>Sweet spot size, real office</td></tr>
+<tr><td>6</td><td>Liberte Construction</td><td class="stars">205</td><td>Remodeling</td><td>2</td><td>4.9 stars, Lake St office</td></tr>
+<tr><td>7</td><td>Blue Yeti HVAC & Plumbing</td><td class="stars">671</td><td>HVAC + Plumbing</td><td>4</td><td>Multi-service = scheduling needs</td></tr>
+<tr><td>8</td><td>Your Home Improvement Co</td><td class="stars">584</td><td>Windows & Bath</td><td>3</td><td>584 reviews, Bloomington office</td></tr>
+<tr><td>9</td><td>3 Bears Landscaping</td><td class="stars">179</td><td>Landscaping</td><td>2</td><td>Seasonal = AI scheduling opportunity</td></tr>
+<tr><td>10</td><td>Garlock-French Corp</td><td class="stars">143</td><td>Roofing</td><td>2</td><td>"Corporation" = multi-manager</td></tr>
+<tr><td>11</td><td>Central Roofing</td><td class="stars">61</td><td>Commercial Roofing</td><td>1</td><td>Since 1923, established commercial</td></tr>
+<tr><td>12</td><td>Bolechowski Construction</td><td class="stars">66</td><td>General Contractor</td><td>1</td><td>Mid-size, good entry point</td></tr>
+<tr><td>13</td><td>Nokomis Roofing</td><td class="stars">58</td><td>Roofing</td><td>2</td><td>Neighborhood established</td></tr>
+<tr><td>14</td><td>Roof Repair PHD</td><td class="stars">54</td><td>Roofing</td><td>1</td><td>5-star, quality operator</td></tr>
+<tr><td>15</td><td>Johnny Five Construction</td><td class="stars">19</td><td>General Contractor</td><td>1</td><td>Smaller but growing</td></tr>
+<tr style="background:#1a2744"><td colspan="6"><strong>🔥 BONUS TARGETS</strong></td></tr>
+<tr><td>16</td><td>Paris Painting</td><td class="stars">868</td><td>Painting</td><td>1</td><td>868 reviews, multiple crews</td></tr>
+<tr><td>17</td><td>Roell Painting</td><td class="stars">388</td><td>Painting</td><td>2</td><td>Established painting company</td></tr>
+<tr><td>18</td><td>Bratt Tree</td><td class="stars">440</td><td>Tree Service</td><td>2</td><td>Scheduling + dispatch needs</td></tr>
+<tr><td>19</td><td>Vineland Tree Care</td><td class="stars">461</td><td>Tree Service</td><td>2</td><td>Next to Bratt Tree — hit both</td></tr>
+<tr><td>20</td><td>Edison Electric</td><td class="stars">1029</td><td>Electrical</td><td>1</td><td>1029 reviews! Major contractor</td></tr>
+<tr><td>21</td><td>Big Mike's Gutters</td><td class="stars">201</td><td>Gutters</td><td>2</td><td>Gutter specialist, 201 reviews</td></tr>
+<tr><td>22</td><td>USA Insulation</td><td class="stars">564</td><td>Insulation</td><td>3</td><td>Franchise = multi-crew</td></tr>
+<tr><td>23</td><td>Harrison Electric</td><td class="stars">959</td><td>Electrical</td><td>4</td><td>959 reviews, established</td></tr>
+<tr><td>24</td><td>Affordable Insulation</td><td class="stars">128</td><td>Insulation</td><td>3</td><td>Same building as Snap Construction!</td></tr>
+<tr><td>25</td><td>ONYX Plumbing & Gas</td><td class="stars">115</td><td>Plumbing</td><td>4</td><td>Same building as Blue Yeti!</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>📋 Pre-Visit Checklist (for each stop):</strong><br>
+1. Google the company name + "owner Minneapolis" <br>
+2. Check LinkedIn for the company → find owner/CEO name <br>
+3. Look at their website — do they have a chatbot? (if no = opportunity) <br>
+4. Check if they're hiring on Indeed (growing = better prospect) <br>
+5. Minnesota SOS business search: mblsportal.sos.state.mn.us <br>
+6. Have the 30-second pitch ready: "I work with service businesses on AI automation..."
+</div>
+
+<div class="tip">
+<strong>🎥 2-Minute Demo Video:</strong> Show this on your phone or tablet if you get the owner's attention.<br>
+👉 <a href="https://daily-brief-live.base44.app/" target="_blank" style="color: #facc15; font-size: 1rem; font-weight: 600;">daily-brief-live.base44.app</a><br>
+<em>If they say "show me what you're talking about" — open this immediately.</em>
+</div>
+
+<div class="tip">
+<strong>🗣️ The Walk-In Pitch:</strong><br>
+"Hey, I'm [Name]. I was hoping to chat with [Owner Name] — I work with service businesses like yours on AI automation. I noticed you guys have a great reputation [reference reviews] and I had a couple ideas that could save your team 10-15 hours a week on phone calls, scheduling, and follow-ups. Is [Owner] around for 2 minutes, or what's the best time to catch them?"
+</div>
+
+</body>
+</html>
