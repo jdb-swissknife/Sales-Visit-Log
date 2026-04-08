@@ -1,5 +1,5 @@
 import { db, businessesTable } from "./index.ts";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 
 interface BusinessSeed {
   name: string;
@@ -354,8 +354,15 @@ const BUSINESSES: BusinessSeed[] = [
   },
 ];
 
-async function main() {
-  process.stdout.write("Seeding businesses...\n");
+export async function seedBusinesses(log: (msg: string) => void = () => {}): Promise<void> {
+  const [{ value: existingCount }] = await db.select({ value: count() }).from(businessesTable);
+
+  if (existingCount >= BUSINESSES.length) {
+    log(`Seed skipped — ${existingCount} businesses already present`);
+    return;
+  }
+
+  log(`Seeding businesses (found ${existingCount}, need ${BUSINESSES.length})...`);
 
   const existing = await db
     .select({ id: businessesTable.id, name: businessesTable.name })
@@ -383,24 +390,13 @@ async function main() {
           buildingGroup: business.buildingGroup ?? null,
         })
         .where(eq(businessesTable.id, existingId));
-      process.stdout.write(`  Updated: ${business.name}\n`);
       updated++;
     } else {
       await db.insert(businessesTable).values(business);
-      process.stdout.write(`  Inserted: ${business.name}\n`);
       inserted++;
     }
   }
 
-  const all = await db
-    .select({ id: businessesTable.id, name: businessesTable.name, routeDay: businessesTable.routeDay })
-    .from(businessesTable);
-  process.stdout.write(`\nTotal businesses: ${all.length} (inserted: ${inserted}, updated: ${updated})\n`);
-  process.stdout.write("Done!\n");
-  process.exit(0);
+  log(`Seed complete — inserted: ${inserted}, updated: ${updated}`);
 }
 
-main().catch((err) => {
-  process.stderr.write(String(err) + "\n");
-  process.exit(1);
-});
