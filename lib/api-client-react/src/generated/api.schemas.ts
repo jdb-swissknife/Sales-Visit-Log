@@ -41,6 +41,9 @@ export interface Business {
   mapsUrl?: string;
   priority: BusinessPriority;
   status: BusinessStatus;
+  routeDay?: number;
+  isBonus: boolean;
+  buildingGroup?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +75,9 @@ export interface CreateBusinessBody {
   sector: string;
   rating?: number;
   reviewCount?: number;
+  routeDay?: number;
+  isBonus?: boolean;
+  buildingGroup?: string;
   notes?: string;
   mapsUrl?: string;
   priority?: CreateBusinessBodyPriority;
@@ -241,6 +247,52 @@ export interface SectorCount {
   sector: string;
   count: number;
   positiveCount: number;
+}
+
+export type RouteBusinessPriority =
+  (typeof RouteBusinessPriority)[keyof typeof RouteBusinessPriority];
+
+export const RouteBusinessPriority = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type RouteBusinessStatus =
+  (typeof RouteBusinessStatus)[keyof typeof RouteBusinessStatus];
+
+export const RouteBusinessStatus = {
+  not_contacted: "not_contacted",
+  contacted: "contacted",
+  follow_up: "follow_up",
+  converted: "converted",
+  not_interested: "not_interested",
+} as const;
+
+export interface RouteBusiness {
+  id: number;
+  name: string;
+  address?: string;
+  phone?: string;
+  sector: string;
+  rating?: number;
+  reviewCount?: number;
+  mapsUrl?: string;
+  priority: RouteBusinessPriority;
+  status: RouteBusinessStatus;
+  routeDay?: number;
+  isBonus: boolean;
+  buildingGroup?: string;
+  noteCount: number;
+  visitCount: number;
+  lastOutcome?: string;
+}
+
+export interface DayRoute {
+  dayNumber: number;
+  areaName: string;
+  neighborhoods: string;
+  stops: RouteBusiness[];
 }
 
 export type UploadMediaBodyType =

@@ -35,6 +35,9 @@ export const ListBusinessesResponseItem = zod.object({
     "converted",
     "not_interested",
   ]),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean(),
+  buildingGroup: zod.string().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -50,6 +53,9 @@ export const CreateBusinessBody = zod.object({
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean().optional(),
+  buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
@@ -89,6 +95,9 @@ export const GetBusinessResponse = zod.object({
     "converted",
     "not_interested",
   ]),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean(),
+  buildingGroup: zod.string().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -107,6 +116,9 @@ export const UpdateBusinessBody = zod.object({
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean().optional(),
+  buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
@@ -139,6 +151,9 @@ export const UpdateBusinessResponse = zod.object({
     "converted",
     "not_interested",
   ]),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean(),
+  buildingGroup: zod.string().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -434,3 +449,39 @@ export const GetVisitsBySectorResponseItem = zod.object({
 export const GetVisitsBySectorResponse = zod.array(
   GetVisitsBySectorResponseItem,
 );
+
+/**
+ * @summary Get businesses organized by geographic day route
+ */
+export const GetRoutesByDayResponseItem = zod.object({
+  dayNumber: zod.number(),
+  areaName: zod.string(),
+  neighborhoods: zod.string(),
+  stops: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      address: zod.string().optional(),
+      phone: zod.string().optional(),
+      sector: zod.string(),
+      rating: zod.number().optional(),
+      reviewCount: zod.number().optional(),
+      mapsUrl: zod.string().optional(),
+      priority: zod.enum(["high", "medium", "low"]),
+      status: zod.enum([
+        "not_contacted",
+        "contacted",
+        "follow_up",
+        "converted",
+        "not_interested",
+      ]),
+      routeDay: zod.number().optional(),
+      isBonus: zod.boolean(),
+      buildingGroup: zod.string().optional(),
+      noteCount: zod.number(),
+      visitCount: zod.number(),
+      lastOutcome: zod.string().optional(),
+    }),
+  ),
+});
+export const GetRoutesByDayResponse = zod.array(GetRoutesByDayResponseItem);

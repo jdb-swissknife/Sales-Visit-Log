@@ -15,20 +15,30 @@ const STATUS_COLORS: Record<string, string> = {
   not_interested: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  high: "text-red-600",
-  medium: "text-amber-600",
-  low: "text-green-600",
-};
+const DAY_FILTER_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Day 1", value: "1" },
+  { label: "Day 2", value: "2" },
+  { label: "Day 3", value: "3" },
+  { label: "Day 4", value: "4" },
+  { label: "Bonus", value: "bonus" },
+];
 
 export default function BusinessesList() {
   const [search, setSearch] = useState("");
+  const [dayFilter, setDayFilter] = useState<string>("all");
   const { data: businesses, isLoading } = useListBusinesses({ query: { queryKey: getListBusinessesQueryKey() } });
 
-  const filtered = businesses?.filter((b) => 
-    b.name.toLowerCase().includes(search.toLowerCase()) || 
-    b.sector.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = businesses?.filter((b) => {
+    const matchesSearch =
+      b.name.toLowerCase().includes(search.toLowerCase()) ||
+      b.sector.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (dayFilter === "all") return true;
+    if (dayFilter === "bonus") return b.isBonus === true;
+    return b.routeDay === Number(dayFilter);
+  });
 
   return (
     <div className="space-y-6">
@@ -45,14 +55,31 @@ export default function BusinessesList() {
         </Link>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input 
-          placeholder="Search by name or sector..." 
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search by name or sector..." 
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {DAY_FILTER_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setDayFilter(option.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                dayFilter === option.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (

@@ -5,10 +5,10 @@
  * Sales Outreach Field Notes API
  * OpenAPI spec version: 0.1.0
  */
-import type { BusinessPriority } from "./businessPriority";
-import type { BusinessStatus } from "./businessStatus";
+import type { RouteBusinessPriority } from "./routeBusinessPriority";
+import type { RouteBusinessStatus } from "./routeBusinessStatus";
 
-export interface Business {
+export interface RouteBusiness {
   id: number;
   name: string;
   address?: string;
@@ -16,13 +16,13 @@ export interface Business {
   sector: string;
   rating?: number;
   reviewCount?: number;
-  notes?: string;
   mapsUrl?: string;
-  priority: BusinessPriority;
-  status: BusinessStatus;
+  priority: RouteBusinessPriority;
+  status: RouteBusinessStatus;
   routeDay?: number;
   isBonus: boolean;
   buildingGroup?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  noteCount: number;
+  visitCount: number;
+  lastOutcome?: string;
 }

@@ -22,6 +22,7 @@ import type {
   CreateBusinessBody,
   CreateNoteBody,
   CreateVisitBody,
+  DayRoute,
   HealthStatus,
   Media,
   Note,
@@ -1865,6 +1866,81 @@ export function useGetVisitsBySector<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetVisitsBySectorQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get businesses organized by geographic day route
+ */
+export const getGetRoutesByDayUrl = () => {
+  return `/api/routes/by-day`;
+};
+
+export const getRoutesByDay = async (
+  options?: RequestInit,
+): Promise<DayRoute[]> => {
+  return customFetch<DayRoute[]>(getGetRoutesByDayUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRoutesByDayQueryKey = () => {
+  return [`/api/routes/by-day`] as const;
+};
+
+export const getGetRoutesByDayQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRoutesByDay>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRoutesByDay>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRoutesByDayQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRoutesByDay>>> = ({
+    signal,
+  }) => getRoutesByDay({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRoutesByDay>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRoutesByDayQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRoutesByDay>>
+>;
+export type GetRoutesByDayQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get businesses organized by geographic day route
+ */
+
+export function useGetRoutesByDay<
+  TData = Awaited<ReturnType<typeof getRoutesByDay>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRoutesByDay>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRoutesByDayQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

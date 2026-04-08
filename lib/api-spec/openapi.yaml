@@ -20,6 +20,8 @@ tags:
     description: Media upload operations
   - name: stats
     description: Summary and stats
+  - name: routes
+    description: Geographic route planning
 
 paths:
   /healthz:
@@ -430,6 +432,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/SectorCount"
 
+  /routes/by-day:
+    get:
+      operationId: getRoutesByDay
+      tags: [routes]
+      summary: Get businesses organized by geographic day route
+      responses:
+        "200":
+          description: Routes organized by day
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DayRoute"
+
 components:
   schemas:
     HealthStatus:
@@ -467,6 +484,12 @@ components:
         status:
           type: string
           enum: [not_contacted, contacted, follow_up, converted, not_interested]
+        routeDay:
+          type: integer
+        isBonus:
+          type: boolean
+        buildingGroup:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -479,6 +502,7 @@ components:
         - sector
         - status
         - priority
+        - isBonus
         - createdAt
         - updatedAt
 
@@ -497,6 +521,12 @@ components:
           type: number
         reviewCount:
           type: integer
+        routeDay:
+          type: integer
+        isBonus:
+          type: boolean
+        buildingGroup:
+          type: string
         notes:
           type: string
         mapsUrl:
@@ -774,3 +804,69 @@ components:
         - sector
         - count
         - positiveCount
+
+    RouteBusiness:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        sector:
+          type: string
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        mapsUrl:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        status:
+          type: string
+          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+        routeDay:
+          type: integer
+        isBonus:
+          type: boolean
+        buildingGroup:
+          type: string
+        noteCount:
+          type: integer
+        visitCount:
+          type: integer
+        lastOutcome:
+          type: string
+      required:
+        - id
+        - name
+        - sector
+        - priority
+        - status
+        - isBonus
+        - noteCount
+        - visitCount
+
+    DayRoute:
+      type: object
+      properties:
+        dayNumber:
+          type: integer
+        areaName:
+          type: string
+        neighborhoods:
+          type: string
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteBusiness"
+      required:
+        - dayNumber
+        - areaName
+        - neighborhoods
+        - stops

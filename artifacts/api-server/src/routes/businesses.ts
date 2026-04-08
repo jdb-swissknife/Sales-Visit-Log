@@ -14,12 +14,24 @@ import {
 
 const router: IRouter = Router();
 
+function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
+  return {
+    ...b,
+    routeDay: b.routeDay ?? undefined,
+    buildingGroup: b.buildingGroup ?? undefined,
+    notes: b.notes ?? undefined,
+    address: b.address ?? undefined,
+    phone: b.phone ?? undefined,
+    mapsUrl: b.mapsUrl ?? undefined,
+  };
+}
+
 router.get("/businesses", async (_req, res): Promise<void> => {
   const businesses = await db
     .select()
     .from(businessesTable)
     .orderBy(businessesTable.createdAt);
-  res.json(ListBusinessesResponse.parse(businesses));
+  res.json(ListBusinessesResponse.parse(businesses.map(sanitizeBusiness)));
 });
 
 router.post("/businesses", async (req, res): Promise<void> => {
@@ -32,7 +44,7 @@ router.post("/businesses", async (req, res): Promise<void> => {
     .insert(businessesTable)
     .values(parsed.data)
     .returning();
-  res.status(201).json(GetBusinessResponse.parse(business));
+  res.status(201).json(GetBusinessResponse.parse(sanitizeBusiness(business)));
 });
 
 router.get("/businesses/:id", async (req, res): Promise<void> => {
@@ -49,7 +61,7 @@ router.get("/businesses/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Business not found" });
     return;
   }
-  res.json(GetBusinessResponse.parse(business));
+  res.json(GetBusinessResponse.parse(sanitizeBusiness(business)));
 });
 
 router.put("/businesses/:id", async (req, res): Promise<void> => {
@@ -72,7 +84,7 @@ router.put("/businesses/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Business not found" });
     return;
   }
-  res.json(UpdateBusinessResponse.parse(business));
+  res.json(UpdateBusinessResponse.parse(sanitizeBusiness(business)));
 });
 
 router.delete("/businesses/:id", async (req, res): Promise<void> => {

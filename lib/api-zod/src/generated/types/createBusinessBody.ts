@@ -15,6 +15,9 @@ export interface CreateBusinessBody {
   sector: string;
   rating?: number;
   reviewCount?: number;
+  routeDay?: number;
+  isBonus?: boolean;
+  buildingGroup?: string;
   notes?: string;
   mapsUrl?: string;
   priority?: CreateBusinessBodyPriority;
