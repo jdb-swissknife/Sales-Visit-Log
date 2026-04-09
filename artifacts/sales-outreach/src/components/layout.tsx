@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Briefcase, LayoutDashboard, MapPin, Route } from "lucide-react";
+import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -9,6 +9,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/businesses", label: "Directory", icon: Briefcase },
     { href: "/visits", label: "Field Notes", icon: MapPin },
     { href: "/routes", label: "Routes", icon: Route },
+    { href: "/script", label: "Script", icon: MessageSquare },
   ];
 
   return (
