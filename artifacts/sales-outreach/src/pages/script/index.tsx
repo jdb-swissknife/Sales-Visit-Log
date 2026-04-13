@@ -118,10 +118,44 @@ const steps: Step[] = [
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-muted/30 border border-border p-4 mt-2">
+
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest">The Trust Ladder</span>
+            <span className="text-xs text-muted-foreground">— key differentiator, weave into demo</span>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed">
+            "And here's the part that really sets us apart — you're always in control. Day one, your agents check with you before they do anything. Every text, every quote, every follow-up — you approve it first."
+          </p>
+          <p className="text-sm text-foreground leading-relaxed">
+            "But here's what happens. After a week or two, you start trusting them. You see the responses they write. They're good. Better than what most employees send. So you bump them up — now they can handle follow-ups on their own. A month later, they're booking appointments without asking. You just get the summary in the morning."
+          </p>
+          <p className="text-sm text-foreground leading-relaxed">
+            "It's like bringing on the best hire you've ever made. Except this one never forgets, never calls in sick, never makes the same mistake twice — and here's the real kicker — they don't just free up YOUR time. They work with EVERY person on your team."
+          </p>
+          <p className="text-sm text-foreground leading-relaxed">
+            "Your sales guy? The agents handle his follow-ups so he can close more. Your office manager? They take the scheduling off her plate so she can focus on customers. Your crews? They get better directions, fewer callbacks, tighter jobs. Every single person in your company gets more productive."
+          </p>
+          <p className="text-sm text-foreground leading-relaxed">
+            "And the longer they're there, the more they learn about how YOUR business runs. Which leads are worth chasing. Which jobs actually make money. Where time gets wasted. It's not just automation — it's a team member that makes your whole team better, every single month. You steer, they work, everyone wins."
+          </p>
+          <div className="flex gap-2 pt-1">
+            {["Always Ask", "Ask Sometimes", "Auto-Approve"].map((stage, i) => (
+              <div key={i} className={`flex-1 rounded-lg p-2 text-center text-[10px] font-bold uppercase tracking-wide border ${
+                i === 0 ? "bg-muted/60 border-border text-muted-foreground" :
+                i === 1 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+              }`}>
+                {stage}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-muted/30 border border-border p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">After demo:</p>
           <p className="text-sm text-foreground leading-relaxed">
-            "This handles your follow-ups, scheduling, customer communication — all the stuff eating your day. It gets smarter over time. Less overhead, more revenue, and it keeps compounding."
+            "So this handles your follow-ups, your scheduling, your customer communication — all the stuff eating your day. But it's bigger than that. You're gaining a team member that works alongside everyone in your company, making each person more productive. And the longer they're there, the better they get. Less overhead, more revenue, and your whole operation gets sharper every month. That's the compounding effect."
           </p>
         </div>
       </div>
@@ -187,6 +221,10 @@ const steps: Step[] = [
           {
             q: "\"We've been burned before.\"",
             a: "\"I hear that a lot. That's why we do the free audit first. No contract, no commitment, until YOU see the value.\""
+          },
+          {
+            q: "\"I don't want AI sending things without me seeing it.\"",
+            a: "\"Totally understand. And that's exactly why we built it the way we did. Day one, nothing goes out without your approval. Every text, every email, every quote — you see it first and hit approve or reject. Green button, red button, that's it.\n\nOver time, as you see the quality of what your agents produce, you decide how much autonomy they get. Some clients keep tight control. Others let their agents run almost everything within a month. You set the dial. You're always in control.\""
           },
         ].map((obj, i) => (
           <div key={i} className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">

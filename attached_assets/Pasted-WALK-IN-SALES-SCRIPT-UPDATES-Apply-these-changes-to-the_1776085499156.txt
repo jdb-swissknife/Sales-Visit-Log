@@ -1,0 +1,88 @@
+WALK-IN SALES SCRIPT UPDATES
+============================
+Apply these changes to the existing walk-in sales script.
+
+════════════════════════════════════════
+CHANGE 1: Add new section after demo talking points
+════════════════════════════════════════
+
+INSERT the following section after the existing demo talking points
+(after "They basically become your smartest employee that never stops improving.")
+and BEFORE the existing "After demo" paragraph:
+
+---
+
+THE TRUST LADDER (key differentiator -- weave into demo)
+=========================================================
+
+"And here's the part that really sets us apart -- you're always in
+control. Day one, your agents check with you before they do anything.
+Every text, every quote, every follow-up -- you approve it first.
+
+But here's what happens. After a week or two, you start trusting them.
+You see the responses they write. They're good. Better than what most
+employees send. So you bump them up -- now they can handle follow-ups
+on their own. A month later, they're booking appointments without
+asking. You just get the summary in the morning.
+
+It's like bringing on the best hire you've ever made. Except this one
+never forgets, never calls in sick, never makes the same mistake twice
+-- and here's the real kicker -- they don't just free up YOUR time.
+They work with EVERY person on your team.
+
+Your sales guy? The agents handle his follow-ups so he can close more.
+Your office manager? They take the scheduling off her plate so she can
+focus on customers. Your crews? They get better directions, fewer
+callbacks, tighter jobs. Every single person in your company gets
+more productive because these agents are working alongside all of them.
+
+And the longer they're there, the more they learn about how YOUR
+business runs. They start seeing patterns nobody else catches. Which
+leads are worth chasing. Which jobs actually make money. Where time
+gets wasted. It's not just automation -- it's a team member that makes
+your whole team better, every single month. That's the goal.
+You steer, they work, everyone wins."
+
+[This is the TRUST LADDER: Always Ask -> Ask Sometimes -> Auto-Approve.
+Frame it as the best hire you ever made -- not a tool, a team member
+that lifts everyone's performance.]
+
+---
+
+════════════════════════════════════════
+CHANGE 2: Replace the "After demo" paragraph
+════════════════════════════════════════
+
+OLD:
+"So this handles your follow-ups, your scheduling, your customer
+communication -- all the stuff eating your day. But it's not just
+automation. It actually gets smarter over time. Your agents study
+what's working, find better outcomes, and help you and your team
+perform better every single month. Less overhead, more revenue,
+and it keeps compounding."
+
+NEW:
+"So this handles your follow-ups, your scheduling, your customer
+communication -- all the stuff eating your day. But it's bigger than
+that. You're gaining a team member that works alongside everyone in
+your company, making each person more productive. And the longer
+they're there, the better they get. Less overhead, more revenue,
+and your whole operation gets sharper every month. That's the
+compounding effect."
+
+════════════════════════════════════════
+CHANGE 3: Add new objection handler
+════════════════════════════════════════
+
+ADD this new objection after the "We've been burned before" objection:
+
+"I don't want AI sending things without me seeing it."
+-> "Totally understand. And that's exactly why we built it the way we did.
+   Day one, nothing goes out without your approval. Every text, every email,
+   every quote -- you see it first and hit approve or reject. Green button,
+   red button, that's it.
+
+   Over time, as you see the quality of what your agents produce, you decide
+   how much autonomy they get. Some clients keep tight control. Others let
+   their agents run almost everything within a month. You set the dial.
+   You're always in control."
