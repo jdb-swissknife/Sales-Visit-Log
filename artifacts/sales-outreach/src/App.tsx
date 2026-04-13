@@ -14,6 +14,7 @@ import VisitDetail from "@/pages/visits/detail";
 import NewVisit from "@/pages/visits/new";
 import RoutesPage from "@/pages/routes/index";
 import ScriptPage from "@/pages/script/index";
+import ColdCallPage from "@/pages/coldcall/index";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ function Router() {
 
         <Route path="/routes" component={RoutesPage} />
         <Route path="/script" component={ScriptPage} />
+        <Route path="/coldcall" component={ColdCallPage} />
         
         <Route component={NotFound} />
       </Switch>

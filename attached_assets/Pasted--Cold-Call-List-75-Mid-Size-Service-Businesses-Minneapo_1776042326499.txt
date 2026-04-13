@@ -1,0 +1,125 @@
+# Cold Call List — 75 Mid-Size Service Businesses, Minneapolis Area
+# For salesperson cold calling — AI Agency prospecting
+# Filtered: 20+ reviews, has website, mid-size (not solo operators, not national chains)
+# Excludes: 25 companies already on walk-in route map
+
+## 🔥 TOP TIER — High Priority (50+ reviews, established mid-size operations)
+
+| # | Company | Type | Address | Rating | Reviews | Phone | Website |
+|---|---------|------|---------|--------|---------|-------|---------|
+| 1 | Hero Plumbing, Heating, Cooling & Electrical | HVAC/Plumbing/Electrical | 10900 Hampshire Ave S #120, Bloomington | 4.7 | 18,342 | (612) 504-1620 | callhero.com |
+| 2 | Standard Heating & Air Conditioning | HVAC | 130 Plymouth Ave N, Minneapolis | 4.9 | 6,603 | (612) 824-2656 | standardheating.com |
+| 3 | Randy's Electric & Plumbing | Electrical/Plumbing | 13400 67th Ave N, Maple Grove | 4.8 | 6,230 | (612) 712-4183 | randyselectric.com |
+| 4 | Pronto Heating and Air Conditioning | HVAC | 7415 Cahill Rd, Minneapolis | 4.9 | 5,505 | (952) 835-7777 | prontoheat.com |
+| 5 | Blue Ox Heating & Air | HVAC | 5720 International Pkwy, Minneapolis | 4.8 | 4,052 | (651) 300-1636 | goblueox.com |
+| 6 | EarlyBird Electric | Electrical | 5720 International Pkwy, New Hope | 4.8 | 3,572 | (612) 217-7756 | earlybirdelectricians.com |
+| 7 | Total Comfort Heating & Cooling | HVAC | 8818 7th Ave N, Golden Valley | 4.8 | 3,379 | (763) 299-7433 | tcomfort.com |
+| 8 | Home Energy Heating & Cooling | HVAC | 2415 Annapolis Ln N #170, Plymouth | 4.9 | 3,246 | (763) 200-1886 | homeenergycenter.com |
+| 9 | All American Door Co. | Garage Doors | 1634 County Hwy 10 #6, Minneapolis | 4.9 | 2,703 | (763) 244-1605 | allamericandoormn.com |
+| 10 | Metro Heating & Cooling | HVAC | 1220 Cope Ave E, Maplewood | 4.9 | 2,203 | (651) 294-7798 | metroheating.net |
+| 11 | A1 Garage Door Service | Garage Doors | 3801 W 50th St #250b, Minneapolis | 4.9 | 1,828 | (612) 238-5253 | a1garage.com |
+| 12 | Plunkett's Pest Control | Pest Control | 40 52nd Way NE, Fridley | 4.8 | 1,451 | (763) 265-7812 | plunketts.net |
+| 13 | Rove Pest Control | Pest Control | 301 4th Ave S #272h, Minneapolis | 4.9 | 1,370 | (763) 400-8989 | rovepestcontrol.com |
+| 14 | Superior Garage Door Repair | Garage Doors | 1405 Lilac Dr N #160B, Minneapolis | 4.9 | 1,326 | (612) 999-1228 | 247superiorgaragedoor.com |
+| 15 | Northland Fence | Fencing | 7703 Main St NE, Fridley | 4.9 | 1,208 | (763) 373-4906 | northlandfence.com |
+| 16 | Stafford Home Service | HVAC/Plumbing | 6225 Cambridge St, Minneapolis | 4.9 | 1,160 | (612) 895-6883 | staffordhomeservice.com |
+| 17 | Champion Replacement Windows | Windows | 5100 US-169 N Suite B, New Hope | 4.5 | 1,015 | (763) 515-8426 | championwindow.com |
+| 18 | Countryside Heating & Cooling | HVAC | 1960 County Rd 90 #200, Maple Plain | 4.9 | 1,013 | (763) 299-9996 | countryside-solutions.com |
+| 19 | Bloomington Heating & Air | HVAC | 1101 W 80th St, Bloomington | 5.0 | 956 | (952) 395-5808 | bloomingtonheating.com |
+| 20 | Advantage Electric | Electrical | 9257 W River Rd, Minneapolis | 5.0 | 939 | (612) 751-1772 | advantageelectricmn.com |
+| 21 | Valor Pest Solutions | Pest Control | 530 N 3rd St Unit C, Minneapolis | 4.9 | 863 | (763) 777-7010 | valorpestsolutions.com |
+| 22 | Rainbow Lawncare | Lawn Care | 11571 K-Tel Dr, Minnetonka | 4.8 | 601 | (952) 252-0535 | rainbowlawncare.com |
+| 23 | NMC Exteriors / Apple Roofing | Roofing | 14505 21st Ave N #226, Plymouth | 4.8 | 585 | (763) 325-1439 | appleroof.com |
+| 24 | Norske Electric | Electrical | 3540 Kilkerry Ln #100, Hamel | 5.0 | 571 | (952) 443-4113 | norskeelectric.com |
+| 25 | Window Nation Minneapolis | Windows | 8862 W 35W Service Dr NE, Blaine | 4.5 | 523 | (612) 213-0485 | windownation.com |
+| 26 | Showcase Lawn Care | Lawn Care | 9210 Wyoming Ave N #260, Brooklyn Park | 4.8 | 520 | (763) 425-1200 | lawn.pro |
+| 27 | Minnesota Tree Experts | Tree Service | 7527 Oliver Ave, Brooklyn Park | 4.8 | 507 | (763) 560-9616 | minnesotatreeexperts.com |
+| 28 | Aladdin Doors Inc. | Garage Doors | 800 SE Washington Ave #205, Minneapolis | 4.9 | 466 | (612) 314-3040 | aladdindoors.com |
+| 29 | Craftsmen Home Improvements | Home Improvement | 7455 France Ave S #194, Edina | 5.0 | 442 | (952) 930-3777 | craftsmenhomeimprovements.com |
+| 30 | Shared Solar Advisors USA | Solar | 3800 American Blvd W #1500, Bloomington | 5.0 | 435 | (952) 900-2837 | sharedsolaradvisors.com |
+| 31 | Kaufman Roofing | Roofing | 14330 Ewing Ave S, Burnsville | 4.8 | 426 | (612) 722-0965 | kaufmanroofing.com |
+| 32 | Green Clean | Cleaning | 5301 E River Rd #115, Fridley | 4.9 | 403 | (612) 789-9600 | teamgreenclean.com |
+| 33 | Abra Kadabra | Restoration/Environmental | 1101 Pierce St NE, Minneapolis | 4.9 | 381 | (763) 645-5948 | abrakadabraenvironmental.com |
+| 34 | KNO Woodworks | Woodworking/Remodel | 4649 Bloomington Ave, Minneapolis | 5.0 | 367 | (612) 226-5172 | knowoodworks.com |
+| 35 | Presidential Construction | General Contractor | 6885 Sycamore Ln N #220, Maple Grove | 5.0 | 361 | (651) 766-3464 | presidentialconstructioninc.com |
+| 36 | Superior Fence & Rail | Fencing | 5340 Quam Ave NE, St Michael | 5.0 | 358 | (763) 340-0010 | superiorfenceandrail.com |
+| 37 | The Brothers That Just Do Gutters | Gutters | 7256 Commerce Cir E #A, Fridley | 4.9 | 316 | (763) 328-0118 | brothersgutters.com |
+| 38 | Headwaters Painting | Painting | 1101 Stinson Blvd NE #102, Minneapolis | 5.0 | 311 | (612) 208-6383 | headwaterspainting.com |
+| 39 | Five Star Bath Solutions | Bathroom Remodeling | 3572 Hoffman Rd E, Vadnais Heights | 4.7 | 282 | (612) 261-0101 | fivestarbathsolutions.com |
+| 40 | Bayport Roofing and Siding | Roofing/Siding | 2240 Edgewood Ave S #201, St Louis Park | 4.6 | 279 | (612) 235-7663 | bayportroofing.com |
+| 41 | Nordeast Electric | Electrical | 4219 Central Ave NE, Minneapolis | 4.8 | 276 | (763) 789-4800 | nordeastelectric.com |
+| 42 | Rosebud Decks & Porches | Deck Builder | 2275 McKnight Rd N #8, North St Paul | 4.9 | 244 | (651) 409-5606 | rosebudconstruction.com |
+| 43 | Centauri Systems | Solar | 9278 Isanti St NE, Blaine | 5.0 | 176 | (763) 248-2734 | solarbycentauri.com |
+| 44 | American Sewer LLC | Sewer/Plumbing | 9001 Emerson Ave S, Bloomington | 4.8 | 166 | (612) 246-4800 | americansewers.com |
+| 45 | Twin Cities Siding & Roofing | Siding/Roofing | 1053 Grand Ave, St Paul | 4.9 | 165 | (651) 390-1806 | tcsidingprofessionals.com |
+| 46 | Mid-State Seamless Gutters | Gutters | 8401 73rd Ave N #44, Brooklyn Park | 4.8 | 154 | (612) 801-1151 | onegutter.com |
+| 47 | KRA Tree & Stump Services | Tree Service | 9731 4th Ave S, Bloomington | 5.0 | 149 | (612) 516-8118 | facebook.com/KRATree |
+| 48 | Skyline Electric | Electrical | 2500 Cleveland Ave N #J, Roseville | 4.9 | 134 | (651) 504-3448 | skylineelectricmn.com |
+| 49 | Pro Window Repair & Service | Windows | 9101 Davenport St NE, Blaine | 5.0 | 128 | (612) 240-0772 | prowindowrepair.com |
+| 50 | Sela Gutter Connection | Gutters | 3400 48th Ave N, Brooklyn Center | 4.8 | 126 | (612) 442-1080 | selagutterconnection.com |
+| 51 | Mill City Concrete and Masonry | Concrete | 1822 Monroe St NE, Minneapolis | 4.7 | 126 | (612) 723-3963 | millcityconcrete.com |
+| 52 | iFlooring | Flooring | 1710 Douglas Dr N #224V, Golden Valley | 5.0 | 125 | (612) 759-0620 | ifloormn.com |
+| 53 | Dean Bjorkstrand Landscaping | Landscaping | 5508 Clinton Ave, Minneapolis | 4.9 | 122 | (612) 861-3919 | deanbjorkstrand.com |
+| 54 | Signature Electric Co | Electrical | 4675 Balsam Ln N, Plymouth | 4.8 | 120 | (763) 588-0090 | signatureelectric.net |
+| 55 | Lifetime Garage Door Repair | Garage Doors | 2920 Bryant Ave S #333, Minneapolis | 4.9 | 117 | (952) 333-4818 | lifetimegaragedoorrepair.com |
+| 56 | ONYX Plumbing & Gas | Plumbing | 6325 Cambridge St #7, Minneapolis | 4.9 | 115 | (612) 234-6699 | calltheonyx.com |
+| 57 | US Solar Corporation | Solar | 323 N Washington Ave #350, Minneapolis | 4.6 | 117 | (612) 260-2230 | us-solar.com |
+| 58 | TruNorth Solar | Solar | 3735 Dunlap St N, Arden Hills | 4.9 | 71 | (612) 888-9599 | trunorthsolar.com |
+| 59 | MN Solar | Solar | 9841 13th Ave N, Plymouth | 4.9 | 113 | (320) 444-5696 | mnsolarandmore.com |
+| 60 | Erik Nelson Plumbing LLC | Plumbing | 2617 37th Ave S, Minneapolis | 4.9 | 223 | (612) 242-6483 | eriknelsonplumbing.com |
+| 61 | Allstar Construction | General Contractor | 5145 Industrial St #103, Maple Plain | 4.8 | 219 | (763) 296-7771 | allstartoday.com |
+| 62 | Hayes Window Restoration | Windows | 2508 24th Ave S, Minneapolis | 5.0 | 209 | (612) 259-7855 | hayeswindows.com |
+| 63 | Deck Science | Deck Builder | 5200 Willson Rd, Edina | 5.0 | 202 | (612) 778-4141 | deckscience.com |
+| 64 | Keyprime Roofing and Remodeling | Roofing/Remodeling | 1000 Boone Ave N #760, Golden Valley | 4.9 | 197 | (952) 230-1269 | keyprimeroofing.com |
+| 65 | Bedrock Restoration | Restoration | 7000 Oxford St, St Louis Park | 4.9 | 193 | (612) 778-3044 | bedrockrestoration.com |
+| 66 | A to Z Construction | Roofing/Remodeling | 124 County Rd 81, Maple Grove | 5.0 | 189 | (612) 366-1386 | atoz-construction.com |
+| 67 | Bold North Roofing and Contracting | Roofing | 1620 W 98th St #100, Minneapolis | 5.0 | 182 | (952) 260-2293 | boldnorthroofing.com |
+| 68 | TWS Remodeling | Windows/Remodeling | 8616 Xylon Ave N #A, Minneapolis | 4.5 | 1,033 | (612) 353-5780 | twsremodeling.com |
+| 69 | Grounded Earth | Landscaping | 603 Ontario St SE Unit 1, Minneapolis | 4.9 | 119 | (612) 223-6441 | groundedearthservices.com |
+| 70 | Brennan Heikes Professional Painting | Painting | 612 Morgan Ave S, Minneapolis | 5.0 | 83 | (612) 743-4458 | brennanheikespainting.com |
+| 71 | Varsity Painters | Painting | 5416 Chicago Ave, Minneapolis | 4.9 | 108 | (952) 938-3886 | varsitypainters.com |
+| 72 | Lakeside Floor Coverings | Flooring | 7500 University Ave NE APT 1, Fridley | 4.8 | 102 | (763) 503-0100 | lakesidefloorcovering.com |
+| 73 | Ridgeline Fence and Deck | Fencing/Decks | 3463 Hiawatha Ave, Minneapolis | 5.0 | 676 | (612) 868-4879 | ridgelinefenceanddeck.com |
+| 74 | Cedar Creek Energy | Solar | 3155 104th Ln NE, Blaine | 4.9 | 71 | (763) 432-5261 | cedarcreekenergy.com |
+| 75 | Refuge Design & Landscape | Landscaping | 3021 10th Ave S, Minneapolis | 4.9 | 65 | (952) 236-4843 | refugemn.com |
+
+---
+
+## By Industry Breakdown
+
+| Industry | Count | Cold Call List |
+|----------|-------|---------------|
+| HVAC / Heating & Cooling | 9 | Standard, Pronto, Blue Ox, Total Comfort, Home Energy, Metro, Bloomington Heating, Countryside, Stafford |
+| Electrical | 8 | Randy's, EarlyBird, Advantage, Norske, Nordeast, Skyline, Signature, Harrison Electric* |
+| Plumbing / Sewer | 5 | Hero, TJK, Erik Nelson, ONYX, American Sewer |
+| Roofing / Siding / Gutters | 9 | NMC/Apple, Kaufman, Bayport, Twin Cities Siding, Keyprime, A to Z, Bold North, Sela Gutter, Mid-State Gutters |
+| Solar | 5 | Shared Solar Advisors, Centauri, US Solar, TruNorth, MN Solar, Cedar Creek |
+| Garage Doors | 4 | All American, A1, Superior, Aladdin, Lifetime |
+| Painting | 4 | Headwaters, Brennan Heikes, Varsity, Roell* |
+| Tree / Landscape / Lawn | 7 | MN Tree Experts, KRA Tree, Rainbow Lawncare, Showcase Lawn, Dean Bjorkstrand, Grounded Earth, Refuge |
+| Fencing / Deck | 4 | Northland, Superior Fence, Ridgeline, Deck Science, Rosebud |
+| Windows | 4 | Champion, Window Nation, Hayes, Pro Window |
+| Restoration / Cleaning | 3 | Bedrock, Abra Kadabra, Green Clean |
+| Pest Control | 3 | Plunkett's, Rove, Valor |
+| General Contractor / Remodel | 5 | Craftsmen, Presidential, KNO Woodworks, Allstar, A to Z |
+| Concrete / Masonry | 1 | Mill City Concrete |
+| Flooring | 2 | iFlooring, Lakeside |
+
+*\* = also on walk-in route*
+
+---
+
+## Cold Call Script
+
+> "Hey [Owner Name], this is [Your Name]. I help service businesses like yours automate their phone calls, scheduling, and follow-ups using AI. I noticed you guys have a great reputation — [reference reviews] — and I had a couple ideas that could save your team 10-15 hours a week. Do you have 2 minutes?"
+
+**If yes:** → Show the 2-min demo: daily-brief-live.base44.app
+
+**If no / not interested:** → "No worries. Can I send you a quick email with a 2-minute video? You can check it out when it's convenient." → Get email address.
+
+**If gatekeeper / voicemail:** → "Hey, this is [Name] calling for [Owner Name] about some AI automation tools that could help with [company]'s scheduling and follow-ups. I'll try back at a better time. My number is [number]."
+
+---
+
+_75 cold call targets + 25 walk-in targets = 100 total prospects_
+_Created: 2026-04-13_
