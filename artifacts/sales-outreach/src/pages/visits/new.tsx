@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCreateVisit, useListBusinesses, getListBusinessesQueryKey } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useCreateVisit, useUploadMedia, useListBusinesses, getListBusinessesQueryKey } from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Mic } from "lucide-react";
 import { Link } from "wouter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { VoiceRecorder } from "@/components/voice-recorder";
 
 const formSchema = z.object({
   businessId: z.coerce.number().min(1, "Business is required"),
@@ -37,7 +39,10 @@ export default function NewVisit() {
 
   const { toast } = useToast();
   const createVisit = useCreateVisit();
+  const uploadMedia = useUploadMedia();
   const { data: businesses } = useListBusinesses({ query: { queryKey: getListBusinessesQueryKey() } });
+  const [voiceNote, setVoiceNote] = useState<{ blob: Blob; durationSec: number; mimeType: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -50,25 +55,46 @@ export default function NewVisit() {
     },
   });
 
-  function onSubmit(data: FormValues) {
-    createVisit.mutate(
-      { 
+  async function onSubmit(data: FormValues) {
+    setIsSaving(true);
+    try {
+      const visit = await createVisit.mutateAsync({
         data: {
           ...data,
           visitedAt: data.visitedAt.toISOString(),
-          nextActionDate: data.nextActionDate?.toISOString()
-        } 
-      },
-      {
-        onSuccess: (visit) => {
-          toast({ title: "Visit logged successfully" });
-          setLocation(`/visits/${visit.id}`);
+          nextActionDate: data.nextActionDate?.toISOString(),
         },
-        onError: () => {
-          toast({ title: "Error logging visit", variant: "destructive" });
-        },
+      });
+
+      if (voiceNote) {
+        const ext = voiceNote.mimeType.includes("mp4") ? "m4a"
+          : voiceNote.mimeType.includes("ogg") ? "ogg"
+          : "webm";
+        const filename = `voice-note-${Date.now()}.${ext}`;
+        const file = new File([voiceNote.blob], filename, { type: voiceNote.mimeType });
+        try {
+          await uploadMedia.mutateAsync({
+            params: { id: visit.id },
+            data: { file, type: "voice_note" },
+          });
+          toast({ title: "Visit logged with voice note" });
+        } catch {
+          toast({
+            title: "Visit saved, but voice note upload failed",
+            description: "You can re-upload it from the visit detail page.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({ title: "Visit logged successfully" });
       }
-    );
+
+      setLocation(`/visits/${visit.id}`);
+    } catch {
+      toast({ title: "Error logging visit", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -213,6 +239,17 @@ export default function NewVisit() {
                 />
               </div>
 
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mic className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Voice Note <span className="text-muted-foreground font-normal">(Optional)</span></h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Capture a hands-free note while everything is fresh. Saved automatically with this visit.
+                </p>
+                <VoiceRecorder onChange={setVoiceNote} />
+              </div>
+
               <FormField
                   control={form.control}
                   name="nextActionDate"
@@ -253,8 +290,8 @@ export default function NewVisit() {
                 />
 
               <div className="pt-4 flex justify-end">
-                <Button type="submit" disabled={createVisit.isPending}>
-                  {createVisit.isPending ? "Saving..." : "Log Visit"}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Saving..." : voiceNote ? "Log Visit + Voice Note" : "Log Visit"}
                 </Button>
               </div>
             </form>

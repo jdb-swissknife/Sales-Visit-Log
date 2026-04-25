@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGetRoutesByDay, getGetRoutesByDayQueryKey } from "@workspace/api-client-react";
 import type { DayRoute, RouteBusiness } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { MapPin, Phone, Star, ChevronDown, ChevronRight, Building2, Route } from "lucide-react";
+import { MapPin, Phone, Star, ChevronDown, ChevronRight, Building2, Route, Mic } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,8 @@ const DAY_BADGE_COLORS: Record<number, string> = {
 
 function BusinessStopCard({ business, stopNumber }: { business: RouteBusiness; stopNumber: number }) {
   return (
-    <Link href={`/businesses/${business.id}`}>
-      <div className="flex gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
+    <div className="flex items-stretch gap-2 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+      <Link href={`/businesses/${business.id}`} className="flex flex-1 gap-3 min-w-0 cursor-pointer">
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground">
           {stopNumber}
         </div>
@@ -81,8 +81,19 @@ function BusinessStopCard({ business, stopNumber }: { business: RouteBusiness; s
             </div>
           )}
         </div>
-      </div>
-    </Link>
+      </Link>
+      <Link
+        href={`/visits/new?businessId=${business.id}`}
+        className="flex-shrink-0 self-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Button size="sm" variant="outline" className="h-8 gap-1.5">
+          <Mic className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Log Visit</span>
+          <span className="sm:hidden">Log</span>
+        </Button>
+      </Link>
+    </div>
   );
 }
 
