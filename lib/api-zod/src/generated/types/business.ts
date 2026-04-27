@@ -5,6 +5,7 @@
  * Sales Outreach Field Notes API
  * OpenAPI spec version: 0.1.0
  */
+import type { BusinessCallType } from "./businessCallType";
 import type { BusinessPriority } from "./businessPriority";
 import type { BusinessStatus } from "./businessStatus";
 
@@ -13,6 +14,7 @@ export interface Business {
   name: string;
   address?: string;
   phone?: string;
+  website?: string;
   sector: string;
   rating?: number;
   reviewCount?: number;
@@ -20,6 +22,7 @@ export interface Business {
   mapsUrl?: string;
   priority: BusinessPriority;
   status: BusinessStatus;
+  callType?: BusinessCallType;
   routeDay?: number;
   isBonus: boolean;
   buildingGroup?: string;

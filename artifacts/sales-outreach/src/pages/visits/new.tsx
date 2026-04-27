@@ -40,7 +40,8 @@ export default function NewVisit() {
   const { toast } = useToast();
   const createVisit = useCreateVisit();
   const uploadMedia = useUploadMedia();
-  const { data: businesses } = useListBusinesses({ query: { queryKey: getListBusinessesQueryKey() } });
+  const businessesParams = { callType: "walk_in" as const };
+  const { data: businesses } = useListBusinesses(businessesParams, { query: { queryKey: getListBusinessesQueryKey(businessesParams) } });
   const [voiceNote, setVoiceNote] = useState<{ blob: Blob; durationSec: number; mimeType: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 

@@ -29,11 +29,20 @@ export const BusinessStatus = {
   not_interested: "not_interested",
 } as const;
 
+export type BusinessCallType =
+  (typeof BusinessCallType)[keyof typeof BusinessCallType];
+
+export const BusinessCallType = {
+  walk_in: "walk_in",
+  cold_call: "cold_call",
+} as const;
+
 export interface Business {
   id: number;
   name: string;
   address?: string;
   phone?: string;
+  website?: string;
   sector: string;
   rating?: number;
   reviewCount?: number;
@@ -41,6 +50,7 @@ export interface Business {
   mapsUrl?: string;
   priority: BusinessPriority;
   status: BusinessStatus;
+  callType?: BusinessCallType;
   routeDay?: number;
   isBonus: boolean;
   buildingGroup?: string;
@@ -68,10 +78,19 @@ export const CreateBusinessBodyStatus = {
   not_interested: "not_interested",
 } as const;
 
+export type CreateBusinessBodyCallType =
+  (typeof CreateBusinessBodyCallType)[keyof typeof CreateBusinessBodyCallType];
+
+export const CreateBusinessBodyCallType = {
+  walk_in: "walk_in",
+  cold_call: "cold_call",
+} as const;
+
 export interface CreateBusinessBody {
   name: string;
   address?: string;
   phone?: string;
+  website?: string;
   sector: string;
   rating?: number;
   reviewCount?: number;
@@ -82,6 +101,7 @@ export interface CreateBusinessBody {
   mapsUrl?: string;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
+  callType?: CreateBusinessBodyCallType;
 }
 
 export type VisitOutcome = (typeof VisitOutcome)[keyof typeof VisitOutcome];
@@ -294,6 +314,18 @@ export interface DayRoute {
   neighborhoods: string;
   stops: RouteBusiness[];
 }
+
+export type ListBusinessesParams = {
+  callType?: ListBusinessesCallType;
+};
+
+export type ListBusinessesCallType =
+  (typeof ListBusinessesCallType)[keyof typeof ListBusinessesCallType];
+
+export const ListBusinessesCallType = {
+  walk_in: "walk_in",
+  cold_call: "cold_call",
+} as const;
 
 export type UploadMediaBodyType =
   (typeof UploadMediaBodyType)[keyof typeof UploadMediaBodyType];

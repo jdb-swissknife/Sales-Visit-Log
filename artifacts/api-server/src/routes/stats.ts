@@ -15,12 +15,12 @@ router.get("/stats/summary", async (_req, res): Promise<void> => {
 
   const [stats] = await db
     .select({
-      totalBusinesses: sql<number>`(SELECT COUNT(*) FROM businesses)::int`,
+      totalBusinesses: sql<number>`(SELECT COUNT(*) FROM businesses WHERE call_type = 'walk_in')::int`,
       totalVisits: sql<number>`(SELECT COUNT(*) FROM visits)::int`,
       visitsThisWeek: sql<number>`(SELECT COUNT(*) FROM visits WHERE visited_at >= ${oneWeekAgo.toISOString()})::int`,
       positiveOutcomes: sql<number>`(SELECT COUNT(*) FROM visits WHERE outcome = 'positive')::int`,
       followUpsNeeded: sql<number>`(SELECT COUNT(*) FROM visits WHERE outcome = 'follow_up_needed')::int`,
-      convertedCount: sql<number>`(SELECT COUNT(*) FROM businesses WHERE status = 'converted')::int`,
+      convertedCount: sql<number>`(SELECT COUNT(*) FROM businesses WHERE status = 'converted' AND call_type = 'walk_in')::int`,
       totalNotes: sql<number>`(SELECT COUNT(*) FROM notes)::int`,
       totalMedia: sql<number>`(SELECT COUNT(*) FROM media)::int`,
     })

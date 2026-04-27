@@ -5,6 +5,7 @@
  * Sales Outreach Field Notes API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateBusinessBodyCallType } from "./createBusinessBodyCallType";
 import type { CreateBusinessBodyPriority } from "./createBusinessBodyPriority";
 import type { CreateBusinessBodyStatus } from "./createBusinessBodyStatus";
 
@@ -12,6 +13,7 @@ export interface CreateBusinessBody {
   name: string;
   address?: string;
   phone?: string;
+  website?: string;
   sector: string;
   rating?: number;
   reviewCount?: number;
@@ -22,4 +24,5 @@ export interface CreateBusinessBody {
   mapsUrl?: string;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
+  callType?: CreateBusinessBodyCallType;
 }

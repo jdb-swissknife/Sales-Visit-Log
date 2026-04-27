@@ -42,6 +42,13 @@ paths:
       operationId: listBusinesses
       tags: [businesses]
       summary: List all businesses
+      parameters:
+        - name: callType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [walk_in, cold_call]
       responses:
         "200":
           description: List of businesses
@@ -468,6 +475,8 @@ components:
           type: string
         phone:
           type: string
+        website:
+          type: string
         sector:
           type: string
         rating:
@@ -484,6 +493,9 @@ components:
         status:
           type: string
           enum: [not_contacted, contacted, follow_up, converted, not_interested]
+        callType:
+          type: string
+          enum: [walk_in, cold_call]
         routeDay:
           type: integer
         isBonus:
@@ -515,6 +527,8 @@ components:
           type: string
         phone:
           type: string
+        website:
+          type: string
         sector:
           type: string
         rating:
@@ -537,6 +551,9 @@ components:
         status:
           type: string
           enum: [not_contacted, contacted, follow_up, converted, not_interested]
+        callType:
+          type: string
+          enum: [walk_in, cold_call]
       required:
         - name
         - sector

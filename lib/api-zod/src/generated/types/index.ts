@@ -8,9 +8,11 @@
 
 export * from "./activityItem";
 export * from "./business";
+export * from "./businessCallType";
 export * from "./businessPriority";
 export * from "./businessStatus";
 export * from "./createBusinessBody";
+export * from "./createBusinessBodyCallType";
 export * from "./createBusinessBodyPriority";
 export * from "./createBusinessBodyStatus";
 export * from "./createNoteBody";
@@ -19,6 +21,8 @@ export * from "./createVisitBody";
 export * from "./createVisitBodyOutcome";
 export * from "./dayRoute";
 export * from "./healthStatus";
+export * from "./listBusinessesCallType";
+export * from "./listBusinessesParams";
 export * from "./media";
 export * from "./mediaType";
 export * from "./note";

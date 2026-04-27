@@ -17,11 +17,16 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all businesses
  */
+export const ListBusinessesQueryParams = zod.object({
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
+});
+
 export const ListBusinessesResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   address: zod.string().optional(),
   phone: zod.string().optional(),
+  website: zod.string().optional(),
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
@@ -35,6 +40,7 @@ export const ListBusinessesResponseItem = zod.object({
     "converted",
     "not_interested",
   ]),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),
@@ -50,6 +56,7 @@ export const CreateBusinessBody = zod.object({
   name: zod.string(),
   address: zod.string().optional(),
   phone: zod.string().optional(),
+  website: zod.string().optional(),
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
@@ -68,6 +75,7 @@ export const CreateBusinessBody = zod.object({
       "not_interested",
     ])
     .optional(),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
 });
 
 /**
@@ -82,6 +90,7 @@ export const GetBusinessResponse = zod.object({
   name: zod.string(),
   address: zod.string().optional(),
   phone: zod.string().optional(),
+  website: zod.string().optional(),
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
@@ -95,6 +104,7 @@ export const GetBusinessResponse = zod.object({
     "converted",
     "not_interested",
   ]),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),
@@ -113,6 +123,7 @@ export const UpdateBusinessBody = zod.object({
   name: zod.string(),
   address: zod.string().optional(),
   phone: zod.string().optional(),
+  website: zod.string().optional(),
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
@@ -131,6 +142,7 @@ export const UpdateBusinessBody = zod.object({
       "not_interested",
     ])
     .optional(),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
 });
 
 export const UpdateBusinessResponse = zod.object({
@@ -138,6 +150,7 @@ export const UpdateBusinessResponse = zod.object({
   name: zod.string(),
   address: zod.string().optional(),
   phone: zod.string().optional(),
+  website: zod.string().optional(),
   sector: zod.string(),
   rating: zod.number().optional(),
   reviewCount: zod.number().optional(),
@@ -151,6 +164,7 @@ export const UpdateBusinessResponse = zod.object({
     "converted",
     "not_interested",
   ]),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),

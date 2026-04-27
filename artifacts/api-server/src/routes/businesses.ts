@@ -22,15 +22,17 @@ function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
     notes: b.notes ?? undefined,
     address: b.address ?? undefined,
     phone: b.phone ?? undefined,
+    website: b.website ?? undefined,
     mapsUrl: b.mapsUrl ?? undefined,
   };
 }
 
-router.get("/businesses", async (_req, res): Promise<void> => {
-  const businesses = await db
-    .select()
-    .from(businessesTable)
-    .orderBy(businessesTable.createdAt);
+router.get("/businesses", async (req, res): Promise<void> => {
+  const callType = typeof req.query.callType === "string" ? req.query.callType : undefined;
+  const query = db.select().from(businessesTable).$dynamic();
+  const businesses = callType
+    ? await query.where(eq(businessesTable.callType, callType)).orderBy(businessesTable.createdAt)
+    : await query.orderBy(businessesTable.createdAt);
   res.json(ListBusinessesResponse.parse(businesses.map(sanitizeBusiness)));
 });
 

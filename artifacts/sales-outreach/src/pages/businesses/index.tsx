@@ -27,7 +27,8 @@ const DAY_FILTER_OPTIONS = [
 export default function BusinessesList() {
   const [search, setSearch] = useState("");
   const [dayFilter, setDayFilter] = useState<string>("all");
-  const { data: businesses, isLoading } = useListBusinesses({ query: { queryKey: getListBusinessesQueryKey() } });
+  const params = { callType: "walk_in" as const };
+  const { data: businesses, isLoading } = useListBusinesses(params, { query: { queryKey: getListBusinessesQueryKey(params) } });
 
   const filtered = businesses?.filter((b) => {
     const matchesSearch =

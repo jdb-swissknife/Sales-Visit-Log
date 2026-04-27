@@ -24,6 +24,7 @@ import type {
   CreateVisitBody,
   DayRoute,
   HealthStatus,
+  ListBusinessesParams,
   Media,
   Note,
   SectorCount,
@@ -121,41 +122,57 @@ export function useHealthCheck<
 /**
  * @summary List all businesses
  */
-export const getListBusinessesUrl = () => {
-  return `/api/businesses`;
+export const getListBusinessesUrl = (params?: ListBusinessesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/businesses?${stringifiedParams}`
+    : `/api/businesses`;
 };
 
 export const listBusinesses = async (
+  params?: ListBusinessesParams,
   options?: RequestInit,
 ): Promise<Business[]> => {
-  return customFetch<Business[]>(getListBusinessesUrl(), {
+  return customFetch<Business[]>(getListBusinessesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListBusinessesQueryKey = () => {
-  return [`/api/businesses`] as const;
+export const getListBusinessesQueryKey = (params?: ListBusinessesParams) => {
+  return [`/api/businesses`, ...(params ? [params] : [])] as const;
 };
 
 export const getListBusinessesQueryOptions = <
   TData = Awaited<ReturnType<typeof listBusinesses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listBusinesses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListBusinessesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listBusinesses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListBusinessesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListBusinessesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listBusinesses>>> = ({
     signal,
-  }) => listBusinesses({ signal, ...requestOptions });
+  }) => listBusinesses(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listBusinesses>>,
@@ -176,15 +193,18 @@ export type ListBusinessesQueryError = ErrorType<unknown>;
 export function useListBusinesses<
   TData = Awaited<ReturnType<typeof listBusinesses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listBusinesses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListBusinessesQueryOptions(options);
+>(
+  params?: ListBusinessesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listBusinesses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBusinessesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
