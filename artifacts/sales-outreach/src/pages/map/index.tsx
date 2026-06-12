@@ -63,6 +63,7 @@ export default function MapPage() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapError, setMapError] = useState(false);
+  const [diag, setDiag] = useState("init…");
 
   const { data: businesses } = useListBusinesses();
   const [selected, setSelected] = useState<Business | null>(null);
@@ -87,6 +88,12 @@ export default function MapPage() {
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
+    const size = () => {
+      const el = mapContainer.current;
+      return el ? `${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}` : "0x0";
+    };
+    setDiag(`init dpr=${window.devicePixelRatio} ${size()}`);
+
     let map: maplibregl.Map;
     try {
       map = new maplibregl.Map({
@@ -100,6 +107,7 @@ export default function MapPage() {
       // WebGL unavailable (older devices, hardware acceleration off, etc.).
       // Surface a fallback instead of crashing the whole page.
       console.error("Map init failed", err);
+      setDiag(`WebGL init threw: ${err instanceof Error ? err.message : String(err)}`);
       setMapError(true);
       return;
     }
@@ -111,26 +119,53 @@ export default function MapPage() {
     });
     map.addControl(geolocate, "top-right");
 
+    let loaded = false;
+    let tileErrors = 0;
+    let lastErr = "";
+
     // If the map never finishes loading (style/tiles blocked, stalled WebGL),
     // fall back to the usable list instead of leaving a blank canvas forever.
     const loadTimeout = window.setTimeout(() => {
-      if (!mapRef.current) return;
+      if (!mapRef.current || loaded) return;
       console.error("Map load timed out — showing fallback");
+      setDiag(`timeout: not loaded after 8s, tileErr=${tileErrors} ${size()} ${lastErr}`);
       setMapError(true);
     }, 8000);
 
-    map.on("load", () => {
-      window.clearTimeout(loadTimeout);
+    const hardenResize = () => {
       // Container can size after mount (dvh on mobile, layout settling),
-      // which otherwise leaves MapLibre with a 0-size blank canvas.
+      // which otherwise leaves MapLibre with a 0-size blank canvas. Resize a
+      // few times to defeat layout races.
       map.resize();
+      requestAnimationFrame(() => map.resize());
+      window.setTimeout(() => map.resize(), 200);
+      window.setTimeout(() => map.resize(), 600);
+    };
+
+    map.on("load", () => {
+      loaded = true;
+      window.clearTimeout(loadTimeout);
+      hardenResize();
+      setDiag(`loaded ✓ ${size()} dpr=${window.devicePixelRatio} tileErr=${tileErrors}`);
       try {
         geolocate.trigger();
       } catch {
         /* geolocation optional */
       }
     });
-    map.on("error", (e) => console.error("Map error", e?.error ?? e));
+
+    map.on("error", (e) => {
+      const msg = (e?.error as Error)?.message ?? String(e?.error ?? e);
+      lastErr = msg;
+      // Tile/source fetch failures (blocked network, ad blocker, provider down)
+      // leave the base map blank even though "load" may fire from the style.
+      if (/tile|source|fetch|network|load|403|429|500/i.test(msg)) tileErrors += 1;
+      console.error("Map error", e?.error ?? e);
+      setDiag(`${loaded ? "loaded" : "loading"} tileErr=${tileErrors} ${size()} :: ${msg}`);
+      // If tiles keep failing, the canvas is unusable — show the list instead.
+      if (tileErrors >= 4) setMapError(true);
+    });
+
     mapRef.current = map;
 
     // Keep the canvas in sync with container size changes.
@@ -223,6 +258,11 @@ export default function MapPage() {
   return (
     <div className="relative h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-3.5rem)] w-full">
       <div ref={mapContainer} className="absolute inset-0" />
+
+      {/* TEMP diagnostic — read this back to debug the blank map */}
+      <div className="absolute left-2 top-2 z-30 max-w-[92%] rounded bg-black/80 px-2 py-1 font-mono text-[11px] leading-tight text-green-300">
+        {diag}
+      </div>
 
       {/* Fallback when the map (WebGL) can't render on this device */}
       {mapError && (
