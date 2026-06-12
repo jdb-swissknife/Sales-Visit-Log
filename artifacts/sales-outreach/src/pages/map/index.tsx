@@ -63,6 +63,8 @@ export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const loadedRef = useRef(false);
+  const tileErrRef = useRef(0);
   const [mapError, setMapError] = useState(false);
   const [diag, setDiag] = useState("init…");
 
@@ -120,16 +122,14 @@ export default function MapPage() {
     });
     map.addControl(geolocate, "top-right");
 
-    let loaded = false;
-    let tileErrors = 0;
-    let lastErr = "";
+    loadedRef.current = false;
+    tileErrRef.current = 0;
 
     // If the map never finishes loading (style/tiles blocked, stalled WebGL),
     // fall back to the usable list instead of leaving a blank canvas forever.
     const loadTimeout = window.setTimeout(() => {
-      if (!mapRef.current || loaded) return;
+      if (!mapRef.current || loadedRef.current) return;
       console.error("Map load timed out — showing fallback");
-      setDiag(`timeout: not loaded after 8s, tileErr=${tileErrors} ${size()} ${lastErr}`);
       setMapError(true);
     }, 8000);
 
@@ -144,10 +144,9 @@ export default function MapPage() {
     };
 
     map.on("load", () => {
-      loaded = true;
+      loadedRef.current = true;
       window.clearTimeout(loadTimeout);
       hardenResize();
-      setDiag(`loaded ✓ ${size()} dpr=${window.devicePixelRatio} tileErr=${tileErrors}`);
       try {
         geolocate.trigger();
       } catch {
@@ -157,14 +156,12 @@ export default function MapPage() {
 
     map.on("error", (e) => {
       const msg = (e?.error as Error)?.message ?? String(e?.error ?? e);
-      lastErr = msg;
       // Tile/source fetch failures (blocked network, ad blocker, provider down)
       // leave the base map blank even though "load" may fire from the style.
-      if (/tile|source|fetch|network|load|403|429|500/i.test(msg)) tileErrors += 1;
+      if (/tile|source|fetch|network|load|403|429|500/i.test(msg)) tileErrRef.current += 1;
       console.error("Map error", e?.error ?? e);
-      setDiag(`${loaded ? "loaded" : "loading"} tileErr=${tileErrors} ${size()} :: ${msg}`);
       // If tiles keep failing, the canvas is unusable — show the list instead.
-      if (tileErrors >= 4) setMapError(true);
+      if (tileErrRef.current >= 4) setMapError(true);
     });
 
     mapRef.current = map;
@@ -181,28 +178,25 @@ export default function MapPage() {
     };
   }, []);
 
-  // Safety net: some in-app/older webviews don't resolve flex/percentage
-  // heights, collapsing the map to 0px tall. If that happens, measure the
-  // viewport and force an explicit pixel height so the canvas has room.
+  // LIVE diagnostic: walk the DOM height chain so we can see exactly which
+  // ancestor collapses to 0px on the user's webview.
   useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const applyHeight = () => {
-      el.style.height = ""; // re-measure CSS-driven height first
-      if (el.clientHeight > 0) return; // flex layout worked — leave it alone
-      const top = el.getBoundingClientRect().top;
-      const bottomNav = window.innerWidth < 768 ? 64 : 0; // h-16 mobile nav
-      const h = window.innerHeight - top - bottomNav;
-      el.style.height = `${Math.max(h, 240)}px`;
-      mapRef.current?.resize();
-    };
-    applyHeight();
-    window.addEventListener("resize", applyHeight);
-    window.addEventListener("orientationchange", applyHeight);
-    return () => {
-      window.removeEventListener("resize", applyHeight);
-      window.removeEventListener("orientationchange", applyHeight);
-    };
+    const id = window.setInterval(() => {
+      const el = rootRef.current;
+      if (!el) return;
+      const h = (n: Element | null | undefined) =>
+        n ? Math.round((n as HTMLElement).clientHeight) : "—";
+      const main = el.parentElement; // <main>
+      const row = main?.parentElement; // content row
+      const shell = row?.parentElement; // app shell root
+      setDiag(
+        `win=${window.innerHeight} doc=${document.documentElement.clientHeight} ` +
+          `body=${h(document.body)} shell=${h(shell)} row=${h(row)} ` +
+          `main=${h(main)} root=${h(el)} inner=${h(mapContainer.current)} | ` +
+          `${loadedRef.current ? "loaded" : "loading"} tileErr=${tileErrRef.current}`
+      );
+    }, 500);
+    return () => window.clearInterval(id);
   }, []);
 
   // Sync markers with data
