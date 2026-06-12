@@ -22,6 +22,8 @@ export interface CreateBusinessBody {
   buildingGroup?: string;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
   callType?: CreateBusinessBodyCallType;

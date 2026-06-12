@@ -75,7 +75,7 @@ export default function NewVisit() {
         const file = new File([voiceNote.blob], filename, { type: voiceNote.mimeType });
         try {
           await uploadMedia.mutateAsync({
-            params: { id: visit.id },
+            id: visit.id,
             data: { file, type: "voice_note" },
           });
           toast({ title: "Visit logged with voice note" });

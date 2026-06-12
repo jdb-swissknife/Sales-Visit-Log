@@ -19,6 +19,9 @@ export const businessesTable = pgTable("businesses", {
   routeDay: integer("route_day"),
   isBonus: boolean("is_bonus").notNull().default(false),
   buildingGroup: text("building_group"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

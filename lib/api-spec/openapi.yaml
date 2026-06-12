@@ -487,6 +487,10 @@ components:
           type: string
         mapsUrl:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
         priority:
           type: string
           enum: [high, medium, low]
@@ -545,6 +549,10 @@ components:
           type: string
         mapsUrl:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
         priority:
           type: string
           enum: [high, medium, low]
@@ -841,6 +849,10 @@ components:
           type: integer
         mapsUrl:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
         priority:
           type: string
           enum: [high, medium, low]

@@ -48,6 +48,8 @@ export interface Business {
   reviewCount?: number;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: BusinessPriority;
   status: BusinessStatus;
   callType?: BusinessCallType;
@@ -99,6 +101,8 @@ export interface CreateBusinessBody {
   buildingGroup?: string;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
   callType?: CreateBusinessBodyCallType;
@@ -298,6 +302,8 @@ export interface RouteBusiness {
   rating?: number;
   reviewCount?: number;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: RouteBusinessPriority;
   status: RouteBusinessStatus;
   routeDay?: number;

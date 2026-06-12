@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 
 import Dashboard from "@/pages/dashboard";
+import MapPage from "@/pages/map/index";
 import BusinessesList from "@/pages/businesses/index";
 import BusinessDetail from "@/pages/businesses/detail";
 import NewBusiness from "@/pages/businesses/new";
@@ -22,7 +23,8 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={MapPage} />
+        <Route path="/dashboard" component={Dashboard} />
         
         <Route path="/businesses" component={BusinessesList} />
         <Route path="/businesses/new" component={NewBusiness} />

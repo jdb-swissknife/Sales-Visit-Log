@@ -1,17 +1,25 @@
 import { Link, useLocation } from "wouter";
-import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone } from "lucide-react";
+import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
   const navItems = [
-    { href: "/", label: "Overview", icon: LayoutDashboard },
+    { href: "/", label: "Map", icon: MapIcon },
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
     { href: "/businesses", label: "Directory", icon: Briefcase },
     { href: "/visits", label: "Field Notes", icon: MapPin },
     { href: "/routes", label: "Routes", icon: Route },
     { href: "/script", label: "Script", icon: MessageSquare },
     { href: "/coldcall", label: "Cold Call", icon: Phone },
   ];
+
+  // Bottom nav fits 5 items comfortably on a phone
+  const mobileNavItems = navItems.filter((i) =>
+    ["/", "/businesses", "/routes", "/visits", "/dashboard"].includes(i.href)
+  );
+
+  const isFullBleed = location === "/";
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background text-foreground">
@@ -49,15 +57,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          <div className="mx-auto max-w-5xl p-4 md:p-6 lg:p-8">
-            {children}
-          </div>
+          {isFullBleed ? (
+            children
+          ) : (
+            <div className="mx-auto max-w-5xl p-4 md:p-6 lg:p-8">{children}</div>
+          )}
         </main>
       </div>
 
       {/* Mobile Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-10 flex h-16 border-t border-border bg-card md:hidden">
-        {navItems.map((item) => {
+        {mobileNavItems.map((item) => {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
             <Link

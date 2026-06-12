@@ -1,0 +1,284 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  useListBusinesses,
+  useCreateVisit,
+  useCreateNote,
+  useUpdateBusiness,
+  getListBusinessesQueryKey,
+  getListVisitsQueryKey,
+} from "@workspace/api-client-react";
+import type { Business } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2, PhoneMissed, CalendarClock, XCircle, MapPin, Navigation } from "lucide-react";
+
+const STATUS_COLORS: Record<string, string> = {
+  not_contacted: "#64748b", // slate
+  contacted: "#3b82f6", // blue
+  follow_up: "#f59e0b", // amber
+  converted: "#22c55e", // green
+  not_interested: "#ef4444", // red
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  not_contacted: "Not contacted",
+  contacted: "Contacted",
+  follow_up: "Follow up",
+  converted: "Converted",
+  not_interested: "Not interested",
+};
+
+interface OutcomeOption {
+  key: string;
+  label: string;
+  icon: typeof CheckCircle2;
+  visitOutcome: "positive" | "neutral" | "negative" | "follow_up_needed";
+  businessStatus: "contacted" | "follow_up" | "converted" | "not_interested";
+  color: string;
+}
+
+const OUTCOMES: OutcomeOption[] = [
+  { key: "sale", label: "Sale", icon: CheckCircle2, visitOutcome: "positive", businessStatus: "converted", color: "border-green-500 data-[selected=true]:bg-green-500" },
+  { key: "callback", label: "Callback", icon: CalendarClock, visitOutcome: "follow_up_needed", businessStatus: "follow_up", color: "border-amber-500 data-[selected=true]:bg-amber-500" },
+  { key: "no_answer", label: "No answer", icon: PhoneMissed, visitOutcome: "neutral", businessStatus: "contacted", color: "border-blue-500 data-[selected=true]:bg-blue-500" },
+  { key: "not_interested", label: "Not interested", icon: XCircle, visitOutcome: "negative", businessStatus: "not_interested", color: "border-red-500 data-[selected=true]:bg-red-500" },
+];
+
+const CALLBACK_PRESETS = [
+  { label: "Tomorrow", days: 1 },
+  { label: "In 3 days", days: 3 },
+  { label: "Next week", days: 7 },
+];
+
+const MINNEAPOLIS: [number, number] = [-93.2650, 44.9778];
+
+export default function MapPage() {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  const { data: businesses } = useListBusinesses();
+  const [selected, setSelected] = useState<Business | null>(null);
+  const [outcome, setOutcome] = useState<OutcomeOption | null>(null);
+  const [callbackDays, setCallbackDays] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const createVisit = useCreateVisit();
+  const createNote = useCreateNote();
+  const updateBusiness = useUpdateBusiness();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const located = useMemo(
+    () => (businesses ?? []).filter((b) => b.latitude != null && b.longitude != null),
+    [businesses]
+  );
+  const unlocatedCount = (businesses?.length ?? 0) - located.length;
+
+  // Init map once
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current) return;
+    const map = new maplibregl.Map({
+      container: mapContainer.current,
+      style: "https://tiles.openfreemap.org/styles/liberty",
+      center: MINNEAPOLIS,
+      zoom: 12,
+      attributionControl: { compact: true },
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+    });
+    map.addControl(geolocate, "top-right");
+    map.on("load", () => geolocate.trigger());
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Sync markers with data
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = located.map((b) => {
+      const el = document.createElement("div");
+      el.style.cssText = [
+        "width:22px;height:22px;border-radius:50% 50% 50% 0;",
+        "transform:rotate(-45deg);cursor:pointer;",
+        `background:${STATUS_COLORS[b.status] ?? "#64748b"};`,
+        "border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4);",
+      ].join("");
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setSelected(b);
+        setOutcome(null);
+        setCallbackDays(null);
+        setNote("");
+      });
+      return new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([b.longitude!, b.latitude!])
+        .addTo(map);
+    });
+  }, [located]);
+
+  // Fit to pins on first data load
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || fittedRef.current || located.length === 0) return;
+    const bounds = new maplibregl.LngLatBounds();
+    located.forEach((b) => bounds.extend([b.longitude!, b.latitude!]));
+    map.fitBounds(bounds, { padding: 60, maxZoom: 14 });
+    fittedRef.current = true;
+  }, [located]);
+
+  async function handleSave() {
+    if (!selected || !outcome) return;
+    setSaving(true);
+    try {
+      const nextActionDate =
+        outcome.key === "callback" && callbackDays != null
+          ? new Date(Date.now() + callbackDays * 86_400_000).toISOString()
+          : undefined;
+
+      const visit = await createVisit.mutateAsync({
+        data: {
+          businessId: selected.id,
+          visitedAt: new Date().toISOString(),
+          outcome: outcome.visitOutcome,
+          ...(nextActionDate ? { nextActionDate } : {}),
+        },
+      });
+
+      if (note.trim()) {
+        await createNote.mutateAsync({ id: visit.id, data: { type: "text", content: note.trim() } });
+      }
+
+      await updateBusiness.mutateAsync({
+        id: selected.id,
+        data: { name: selected.name, sector: selected.sector, status: outcome.businessStatus },
+      });
+
+      queryClient.invalidateQueries({ queryKey: getListBusinessesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() });
+      toast({ title: `Visit logged — ${outcome.label}` });
+      setSelected(null);
+    } catch {
+      toast({ title: "Failed to log visit", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-3.5rem)] w-full">
+      <div ref={mapContainer} className="absolute inset-0" />
+
+      {/* Legend */}
+      <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-card/90 px-3 py-2 text-xs shadow backdrop-blur">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {Object.entries(STATUS_LABELS).map(([k, label]) => (
+            <span key={k} className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: STATUS_COLORS[k] }} />
+              {label}
+            </span>
+          ))}
+        </div>
+        {unlocatedCount > 0 && (
+          <div className="mt-1 text-muted-foreground">{unlocatedCount} businesses not geocoded yet</div>
+        )}
+      </div>
+
+      {/* Quick-log bottom sheet */}
+      <Drawer open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DrawerContent>
+          {selected && (
+            <div className="mx-auto w-full max-w-md pb-6">
+              <DrawerHeader className="pb-2">
+                <DrawerTitle className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                  {selected.name}
+                </DrawerTitle>
+                <DrawerDescription className="flex items-center gap-2">
+                  {selected.address}
+                  <Badge variant="outline">{STATUS_LABELS[selected.status] ?? selected.status}</Badge>
+                </DrawerDescription>
+              </DrawerHeader>
+
+              <div className="space-y-4 px-4">
+                {/* Outcome chips */}
+                <div className="grid grid-cols-2 gap-2">
+                  {OUTCOMES.map((o) => (
+                    <button
+                      key={o.key}
+                      data-selected={outcome?.key === o.key}
+                      onClick={() => setOutcome(o)}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-3 text-sm font-medium transition-colors data-[selected=true]:text-white ${o.color}`}
+                    >
+                      <o.icon className="h-4 w-4" />
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Callback presets */}
+                {outcome?.key === "callback" && (
+                  <div className="flex gap-2">
+                    {CALLBACK_PRESETS.map((p) => (
+                      <button
+                        key={p.days}
+                        data-selected={callbackDays === p.days}
+                        onClick={() => setCallbackDays(p.days)}
+                        className="flex-1 rounded-md border px-2 py-2 text-xs font-medium data-[selected=true]:bg-amber-500 data-[selected=true]:text-white"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <Textarea
+                  placeholder="Quick note (optional)…"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                />
+
+                <div className="flex gap-2">
+                  <Button className="flex-1" size="lg" disabled={!outcome || saving} onClick={handleSave}>
+                    {saving ? "Saving…" : "Log visit"}
+                  </Button>
+                  {selected.latitude != null && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() =>
+                        window.open(
+                          `https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`,
+                          "_blank"
+                        )
+                      }
+                    >
+                      <Navigation className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
+    </div>
+  );
+}

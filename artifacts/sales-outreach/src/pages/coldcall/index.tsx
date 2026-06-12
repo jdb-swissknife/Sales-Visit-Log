@@ -194,7 +194,7 @@ export default function ColdCallPage() {
         if (prev && data.status) {
           queryClient.setQueryData<Business[]>(
             queryKey,
-            prev.map((b) => (b.id === id ? { ...b, status: data.status as string } : b))
+            prev.map((b) => (b.id === id ? ({ ...b, status: data.status } as Business) : b))
           );
         }
         return { prev };

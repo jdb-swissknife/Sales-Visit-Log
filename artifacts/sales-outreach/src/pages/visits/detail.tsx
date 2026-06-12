@@ -32,7 +32,7 @@ export default function VisitDetail() {
     if (!newNoteText.trim()) return;
     
     createNote.mutate(
-      { params: { id }, data: { type: "text", content: newNoteText } },
+      { id, data: { type: "text", content: newNoteText } },
       {
         onSuccess: () => {
           setNewNoteText("");
@@ -55,7 +55,7 @@ export default function VisitDetail() {
     // Based on the generated types, it expects `{ params: { id }, data: UploadMediaBody }`
     // UploadMediaBody is `{ file: Blob, type: string, caption?: string }`
     uploadMedia.mutate(
-      { params: { id }, data: { file, type } },
+      { id, data: { file, type } },
       {
         onSuccess: () => {
           toast({ title: "Media uploaded" });

@@ -32,6 +32,8 @@ export const ListBusinessesResponseItem = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -65,6 +67,8 @@ export const CreateBusinessBody = zod.object({
   buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -96,6 +100,8 @@ export const GetBusinessResponse = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -132,6 +138,8 @@ export const UpdateBusinessBody = zod.object({
   buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -156,6 +164,8 @@ export const UpdateBusinessResponse = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -481,6 +491,8 @@ export const GetRoutesByDayResponseItem = zod.object({
       rating: zod.number().optional(),
       reviewCount: zod.number().optional(),
       mapsUrl: zod.string().optional(),
+      latitude: zod.number().optional(),
+      longitude: zod.number().optional(),
       priority: zod.enum(["high", "medium", "low"]),
       status: zod.enum([
         "not_contacted",
