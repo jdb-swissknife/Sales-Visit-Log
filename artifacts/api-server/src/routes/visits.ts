@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, visitsTable, businessesTable, notesTable, mediaTable } from "@workspace/db";
+import { logEvent } from "../lib/events";
 import {
   ListVisitsResponse,
   ListVisitsForBusinessParams,
@@ -83,6 +84,15 @@ router.post("/visits", async (req, res): Promise<void> => {
     .update(businessesTable)
     .set({ status: "contacted", updatedAt: new Date() })
     .where(eq(businessesTable.id, visit.businessId));
+
+  void logEvent({
+    type: "visit.created",
+    entityType: "visit",
+    entityId: visit.id,
+    businessId: visit.businessId,
+    visitId: visit.id,
+    payload: { outcome: visit.outcome, businessName: business[0]?.name },
+  });
 
   res.status(201).json(
     GetVisitResponse.parse({
@@ -179,6 +189,15 @@ router.put("/visits/:id", async (req, res): Promise<void> => {
     .from(businessesTable)
     .where(eq(businessesTable.id, updated.businessId));
 
+  void logEvent({
+    type: "visit.updated",
+    entityType: "visit",
+    entityId: updated.id,
+    businessId: updated.businessId,
+    visitId: updated.id,
+    payload: { outcome: updated.outcome },
+  });
+
   const noteCountResult = await db
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(notesTable)
@@ -212,6 +231,13 @@ router.delete("/visits/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Visit not found" });
     return;
   }
+  void logEvent({
+    type: "visit.deleted",
+    entityType: "visit",
+    entityId: deleted.id,
+    businessId: deleted.businessId,
+    visitId: deleted.id,
+  });
   res.sendStatus(204);
 });
 

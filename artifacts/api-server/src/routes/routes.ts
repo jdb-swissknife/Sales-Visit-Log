@@ -23,6 +23,8 @@ router.get("/routes/by-day", async (_req, res): Promise<void> => {
       rating: businessesTable.rating,
       reviewCount: businessesTable.reviewCount,
       mapsUrl: businessesTable.mapsUrl,
+      latitude: businessesTable.latitude,
+      longitude: businessesTable.longitude,
       priority: businessesTable.priority,
       status: businessesTable.status,
       routeDay: businessesTable.routeDay,
@@ -58,6 +60,8 @@ router.get("/routes/by-day", async (_req, res): Promise<void> => {
       .map((b) => ({
         ...b,
         buildingGroup: b.buildingGroup ?? undefined,
+        latitude: b.latitude ?? undefined,
+        longitude: b.longitude ?? undefined,
         lastOutcome: b.lastOutcome ?? undefined,
       }));
     return {

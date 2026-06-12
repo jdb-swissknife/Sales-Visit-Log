@@ -3,11 +3,16 @@ import { eq } from "drizzle-orm";
 import multer from "multer";
 import { db, mediaTable } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { logEvent } from "../lib/events";
+import { processMediaTranscription } from "../lib/transcription";
 import {
   ListMediaForVisitParams,
   ListMediaForVisitResponse,
   UploadMediaParams,
   DeleteMediaParams,
+  GetMediaTranscriptionParams,
+  GetMediaTranscriptionResponse,
+  RequestMediaTranscriptionParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -70,6 +75,8 @@ router.post(
     const objectPath = storageService.normalizeObjectEntityPath(uploadUrl.split("?")[0]);
     const servingUrl = `/api/storage${objectPath}`;
 
+    const isVoice = mediaType === "voice_note" || mediaType === "interview";
+
     const [media] = await db
       .insert(mediaTable)
       .values({
@@ -80,12 +87,74 @@ router.post(
         caption: caption ?? null,
         mimeType: file.mimetype,
         sizeBytes: file.size,
+        transcriptionStatus: isVoice ? "pending" : "none",
       })
       .returning();
+
+    void logEvent({
+      type: "media.uploaded",
+      entityType: "media",
+      entityId: media.id,
+      visitId: media.visitId,
+      payload: { mediaType, sizeBytes: file.size },
+    });
+
+    if (isVoice) {
+      // Fire-and-forget: transcribe + AI-structure in the background.
+      void processMediaTranscription(media.id, {
+        buffer: file.buffer,
+        filename: file.originalname,
+        mimeType: file.mimetype,
+      });
+    }
 
     res.status(201).json(media);
   }
 );
+
+router.get("/media/:id/transcription", async (req, res): Promise<void> => {
+  const params = GetMediaTranscriptionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [media] = await db
+    .select()
+    .from(mediaTable)
+    .where(eq(mediaTable.id, params.data.id));
+  if (!media) {
+    res.status(404).json({ error: "Media not found" });
+    return;
+  }
+  res.json(GetMediaTranscriptionResponse.parse(media));
+});
+
+router.post("/media/:id/transcription", async (req, res): Promise<void> => {
+  const params = RequestMediaTranscriptionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [media] = await db
+    .select()
+    .from(mediaTable)
+    .where(eq(mediaTable.id, params.data.id));
+  if (!media) {
+    res.status(404).json({ error: "Media not found" });
+    return;
+  }
+  if (media.transcriptionStatus === "processing") {
+    res.status(202).json(GetMediaTranscriptionResponse.parse(media));
+    return;
+  }
+  const [updated] = await db
+    .update(mediaTable)
+    .set({ transcriptionStatus: "pending", transcriptionError: null })
+    .where(eq(mediaTable.id, params.data.id))
+    .returning();
+  void processMediaTranscription(params.data.id);
+  res.status(202).json(GetMediaTranscriptionResponse.parse(updated));
+});
 
 router.delete("/media/:id", async (req, res): Promise<void> => {
   const params = DeleteMediaParams.safeParse(req.params);

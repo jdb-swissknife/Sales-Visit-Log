@@ -17,6 +17,8 @@ export interface RouteBusiness {
   rating?: number;
   reviewCount?: number;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: RouteBusinessPriority;
   status: RouteBusinessStatus;
   routeDay?: number;

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, businessesTable } from "@workspace/db";
+import { geocodeAddress } from "../lib/geocode";
 import {
   ListBusinessesResponse,
   CreateBusinessBody,
@@ -14,6 +15,19 @@ import {
 
 const router: IRouter = Router();
 
+/** Geocode in the background and store coordinates; never blocks the response. */
+function geocodeInBackground(businessId: number, address: string): void {
+  void geocodeAddress(address)
+    .then(async (point) => {
+      if (!point) return;
+      await db
+        .update(businessesTable)
+        .set({ latitude: point.latitude, longitude: point.longitude, geocodedAt: new Date() })
+        .where(eq(businessesTable.id, businessId));
+    })
+    .catch(() => {});
+}
+
 function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
   return {
     ...b,
@@ -24,6 +38,8 @@ function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
     phone: b.phone ?? undefined,
     website: b.website ?? undefined,
     mapsUrl: b.mapsUrl ?? undefined,
+    latitude: b.latitude ?? undefined,
+    longitude: b.longitude ?? undefined,
   };
 }
 
@@ -46,6 +62,9 @@ router.post("/businesses", async (req, res): Promise<void> => {
     .insert(businessesTable)
     .values(parsed.data)
     .returning();
+  if (business.address && business.latitude == null) {
+    geocodeInBackground(business.id, business.address);
+  }
   res.status(201).json(GetBusinessResponse.parse(sanitizeBusiness(business)));
 });
 
@@ -85,6 +104,9 @@ router.put("/businesses/:id", async (req, res): Promise<void> => {
   if (!business) {
     res.status(404).json({ error: "Business not found" });
     return;
+  }
+  if (parsed.data.address && business.address && business.latitude == null) {
+    geocodeInBackground(business.id, business.address);
   }
   res.json(UpdateBusinessResponse.parse(sanitizeBusiness(business)));
 });

@@ -1,4 +1,4 @@
-import { db, businessesTable } from "../../lib/db/src/index.ts";
+import { db, businessesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
 interface BusinessSeed {

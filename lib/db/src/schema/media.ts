@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { visitsTable } from "./visits";
@@ -12,6 +12,13 @@ export const mediaTable = pgTable("media", {
   caption: text("caption"),
   mimeType: text("mime_type"),
   sizeBytes: integer("size_bytes"),
+  /** Whisper transcript for voice_note/interview media */
+  transcript: text("transcript"),
+  /** none | pending | processing | done | error */
+  transcriptionStatus: text("transcription_status").notNull().default("none"),
+  transcriptionError: text("transcription_error"),
+  /** AI-structured note: { summary, interestLevel, objections[], followUpItems[], contactInfo } */
+  aiStructured: jsonb("ai_structured"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

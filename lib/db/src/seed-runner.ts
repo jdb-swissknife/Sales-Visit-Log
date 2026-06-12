@@ -1,4 +1,4 @@
-import { seedBusinesses } from "./seed.ts";
+import { seedBusinesses } from "./seed";
 
 seedBusinesses((msg) => process.stdout.write(msg + "\n"))
   .then(() => process.exit(0))

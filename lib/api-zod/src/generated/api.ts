@@ -32,6 +32,8 @@ export const ListBusinessesResponseItem = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -65,6 +67,8 @@ export const CreateBusinessBody = zod.object({
   buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -96,6 +100,8 @@ export const GetBusinessResponse = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -132,6 +138,8 @@ export const UpdateBusinessBody = zod.object({
   buildingGroup: zod.string().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -156,6 +164,8 @@ export const UpdateBusinessResponse = zod.object({
   reviewCount: zod.number().optional(),
   notes: zod.string().optional(),
   mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -270,6 +280,27 @@ export const GetVisitResponse = zod.object({
       caption: zod.string().optional(),
       mimeType: zod.string().optional(),
       sizeBytes: zod.number().optional(),
+      transcript: zod.string().optional(),
+      transcriptionStatus: zod.enum([
+        "none",
+        "pending",
+        "processing",
+        "done",
+        "error",
+      ]),
+      transcriptionError: zod.string().optional(),
+      aiStructured: zod
+        .object({
+          summary: zod.string().optional(),
+          interestLevel: zod
+            .enum(["hot", "warm", "cool", "cold", "unknown"])
+            .optional(),
+          objections: zod.array(zod.string()).optional(),
+          followUpItems: zod.array(zod.string()).optional(),
+          contactInfo: zod.string().optional(),
+          nextStep: zod.string().optional(),
+        })
+        .optional(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -395,6 +426,27 @@ export const ListMediaForVisitResponseItem = zod.object({
   caption: zod.string().optional(),
   mimeType: zod.string().optional(),
   sizeBytes: zod.number().optional(),
+  transcript: zod.string().optional(),
+  transcriptionStatus: zod.enum([
+    "none",
+    "pending",
+    "processing",
+    "done",
+    "error",
+  ]),
+  transcriptionError: zod.string().optional(),
+  aiStructured: zod
+    .object({
+      summary: zod.string().optional(),
+      interestLevel: zod
+        .enum(["hot", "warm", "cool", "cold", "unknown"])
+        .optional(),
+      objections: zod.array(zod.string()).optional(),
+      followUpItems: zod.array(zod.string()).optional(),
+      contactInfo: zod.string().optional(),
+      nextStep: zod.string().optional(),
+    })
+    .optional(),
   createdAt: zod.coerce.date(),
 });
 export const ListMediaForVisitResponse = zod.array(
@@ -415,10 +467,97 @@ export const UploadMediaBody = zod.object({
 });
 
 /**
+ * @summary Get transcription status and result for a media item
+ */
+export const GetMediaTranscriptionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetMediaTranscriptionResponse = zod.object({
+  id: zod.number(),
+  visitId: zod.number(),
+  type: zod.enum(["image", "voice_note", "interview", "document"]),
+  url: zod.string(),
+  filename: zod.string(),
+  caption: zod.string().optional(),
+  mimeType: zod.string().optional(),
+  sizeBytes: zod.number().optional(),
+  transcript: zod.string().optional(),
+  transcriptionStatus: zod.enum([
+    "none",
+    "pending",
+    "processing",
+    "done",
+    "error",
+  ]),
+  transcriptionError: zod.string().optional(),
+  aiStructured: zod
+    .object({
+      summary: zod.string().optional(),
+      interestLevel: zod
+        .enum(["hot", "warm", "cool", "cold", "unknown"])
+        .optional(),
+      objections: zod.array(zod.string()).optional(),
+      followUpItems: zod.array(zod.string()).optional(),
+      contactInfo: zod.string().optional(),
+      nextStep: zod.string().optional(),
+    })
+    .optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Request (or retry) transcription for a voice media item
+ */
+export const RequestMediaTranscriptionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Delete a media item
  */
 export const DeleteMediaParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary List activity events (consumed by Hermes)
+ */
+export const ListEventsQueryParams = zod.object({
+  since: zod
+    .date()
+    .optional()
+    .describe("Only events created after this timestamp"),
+  type: zod.coerce
+    .string()
+    .optional()
+    .describe('Filter by event type prefix (e.g. \"visit.\")'),
+  limit: zod.coerce.number().optional(),
+});
+
+export const ListEventsResponseItem = zod.object({
+  id: zod.number(),
+  type: zod.string(),
+  entityType: zod.string().optional(),
+  entityId: zod.number().optional(),
+  businessId: zod.number().optional(),
+  visitId: zod.number().optional(),
+  payload: zod.record(zod.string(), zod.unknown()).optional(),
+  source: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListEventsResponse = zod.array(ListEventsResponseItem);
+
+/**
+ * @summary Record a client-side activity event
+ */
+export const CreateEventBody = zod.object({
+  type: zod.string(),
+  entityType: zod.string().optional(),
+  entityId: zod.number().optional(),
+  businessId: zod.number().optional(),
+  visitId: zod.number().optional(),
+  payload: zod.record(zod.string(), zod.unknown()).optional(),
 });
 
 /**
@@ -481,6 +620,8 @@ export const GetRoutesByDayResponseItem = zod.object({
       rating: zod.number().optional(),
       reviewCount: zod.number().optional(),
       mapsUrl: zod.string().optional(),
+      latitude: zod.number().optional(),
+      longitude: zod.number().optional(),
       priority: zod.enum(["high", "medium", "low"]),
       status: zod.enum([
         "not_contacted",

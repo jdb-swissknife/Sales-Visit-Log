@@ -17,6 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { VoiceRecorder } from "@/components/voice-recorder";
+import { enqueueVisit, isLikelyOfflineError } from "@/lib/offline-queue";
 
 const formSchema = z.object({
   businessId: z.coerce.number().min(1, "Business is required"),
@@ -56,8 +57,48 @@ export default function NewVisit() {
     },
   });
 
+  async function saveOffline(data: FormValues) {
+    const business = businesses?.find((b) => b.id === data.businessId);
+    await enqueueVisit({
+      queuedAt: new Date().toISOString(),
+      businessName: business?.name,
+      visit: {
+        ...data,
+        visitedAt: data.visitedAt.toISOString(),
+        nextActionDate: data.nextActionDate?.toISOString(),
+      },
+      ...(voiceNote
+        ? {
+            voiceNote: {
+              blob: voiceNote.blob,
+              durationSec: voiceNote.durationSec,
+              mimeType: voiceNote.mimeType,
+            },
+          }
+        : {}),
+    });
+    toast({
+      title: "No signal — visit saved offline",
+      description: "It will sync automatically when you're back online.",
+    });
+    setLocation("/visits");
+  }
+
   async function onSubmit(data: FormValues) {
     setIsSaving(true);
+
+    // No connection? Queue immediately instead of waiting on a timeout.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        await saveOffline(data);
+      } catch {
+        toast({ title: "Error saving visit offline", variant: "destructive" });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     try {
       const visit = await createVisit.mutateAsync({
         data: {
@@ -75,7 +116,7 @@ export default function NewVisit() {
         const file = new File([voiceNote.blob], filename, { type: voiceNote.mimeType });
         try {
           await uploadMedia.mutateAsync({
-            params: { id: visit.id },
+            id: visit.id,
             data: { file, type: "voice_note" },
           });
           toast({ title: "Visit logged with voice note" });
@@ -91,7 +132,15 @@ export default function NewVisit() {
       }
 
       setLocation(`/visits/${visit.id}`);
-    } catch {
+    } catch (err) {
+      if (isLikelyOfflineError(err)) {
+        try {
+          await saveOffline(data);
+          return;
+        } catch {
+          // fall through to the generic error toast
+        }
+      }
       toast({ title: "Error logging visit", variant: "destructive" });
     } finally {
       setIsSaving(false);

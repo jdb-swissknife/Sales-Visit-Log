@@ -5,7 +5,9 @@
  * Sales Outreach Field Notes API
  * OpenAPI spec version: 0.1.0
  */
+import type { MediaTranscriptionStatus } from "./mediaTranscriptionStatus";
 import type { MediaType } from "./mediaType";
+import type { StructuredNote } from "./structuredNote";
 
 export interface Media {
   id: number;
@@ -16,5 +18,9 @@ export interface Media {
   caption?: string;
   mimeType?: string;
   sizeBytes?: number;
+  transcript?: string;
+  transcriptionStatus: MediaTranscriptionStatus;
+  transcriptionError?: string;
+  aiStructured?: StructuredNote;
   createdAt: Date;
 }

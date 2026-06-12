@@ -7,6 +7,7 @@ import notesRouter from "./notes";
 import mediaRouter from "./media";
 import statsRouter from "./stats";
 import routesRouter from "./routes";
+import eventsRouter from "./events";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(notesRouter);
 router.use(mediaRouter);
 router.use(statsRouter);
 router.use(routesRouter);
+router.use(eventsRouter);
 
 export default router;

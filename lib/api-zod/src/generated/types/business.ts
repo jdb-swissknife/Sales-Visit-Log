@@ -20,6 +20,8 @@ export interface Business {
   reviewCount?: number;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: BusinessPriority;
   status: BusinessStatus;
   callType?: BusinessCallType;

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, notesTable } from "@workspace/db";
+import { logEvent } from "../lib/events";
 import {
   ListNotesForVisitParams,
   ListNotesForVisitResponse,
@@ -49,6 +50,13 @@ router.post("/visits/:id/notes", async (req, res): Promise<void> => {
       durationSeconds: parsed.data.durationSeconds ?? null,
     })
     .returning();
+  void logEvent({
+    type: "note.created",
+    entityType: "note",
+    entityId: note.id,
+    visitId: note.visitId,
+    payload: { noteType: note.type },
+  });
   res.status(201).json(note);
 });
 

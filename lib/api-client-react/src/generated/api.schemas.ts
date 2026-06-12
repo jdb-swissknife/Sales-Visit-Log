@@ -48,6 +48,8 @@ export interface Business {
   reviewCount?: number;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: BusinessPriority;
   status: BusinessStatus;
   callType?: BusinessCallType;
@@ -99,6 +101,8 @@ export interface CreateBusinessBody {
   buildingGroup?: string;
   notes?: string;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
   callType?: CreateBusinessBodyCallType;
@@ -163,6 +167,37 @@ export const MediaType = {
   document: "document",
 } as const;
 
+export type MediaTranscriptionStatus =
+  (typeof MediaTranscriptionStatus)[keyof typeof MediaTranscriptionStatus];
+
+export const MediaTranscriptionStatus = {
+  none: "none",
+  pending: "pending",
+  processing: "processing",
+  done: "done",
+  error: "error",
+} as const;
+
+export type StructuredNoteInterestLevel =
+  (typeof StructuredNoteInterestLevel)[keyof typeof StructuredNoteInterestLevel];
+
+export const StructuredNoteInterestLevel = {
+  hot: "hot",
+  warm: "warm",
+  cool: "cool",
+  cold: "cold",
+  unknown: "unknown",
+} as const;
+
+export interface StructuredNote {
+  summary?: string;
+  interestLevel?: StructuredNoteInterestLevel;
+  objections?: string[];
+  followUpItems?: string[];
+  contactInfo?: string;
+  nextStep?: string;
+}
+
 export interface Media {
   id: number;
   visitId: number;
@@ -172,6 +207,10 @@ export interface Media {
   caption?: string;
   mimeType?: string;
   sizeBytes?: number;
+  transcript?: string;
+  transcriptionStatus: MediaTranscriptionStatus;
+  transcriptionError?: string;
+  aiStructured?: StructuredNote;
   createdAt: string;
 }
 
@@ -241,6 +280,31 @@ export interface CreateNoteBody {
   durationSeconds?: number;
 }
 
+export type EventPayload = { [key: string]: unknown };
+
+export interface Event {
+  id: number;
+  type: string;
+  entityType?: string;
+  entityId?: number;
+  businessId?: number;
+  visitId?: number;
+  payload?: EventPayload;
+  source: string;
+  createdAt: string;
+}
+
+export type CreateEventBodyPayload = { [key: string]: unknown };
+
+export interface CreateEventBody {
+  type: string;
+  entityType?: string;
+  entityId?: number;
+  businessId?: number;
+  visitId?: number;
+  payload?: CreateEventBodyPayload;
+}
+
 export interface SummaryStats {
   totalBusinesses: number;
   totalVisits: number;
@@ -298,6 +362,8 @@ export interface RouteBusiness {
   rating?: number;
   reviewCount?: number;
   mapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   priority: RouteBusinessPriority;
   status: RouteBusinessStatus;
   routeDay?: number;
@@ -341,4 +407,16 @@ export type UploadMediaBody = {
   file: Blob;
   type: UploadMediaBodyType;
   caption?: string;
+};
+
+export type ListEventsParams = {
+  /**
+   * Only events created after this timestamp
+   */
+  since?: string;
+  /**
+   * Filter by event type prefix (e.g. "visit.")
+   */
+  type?: string;
+  limit?: number;
 };

@@ -10,6 +10,7 @@ import { ArrowLeft, MapPin, Calendar, User, Phone, Image as ImageIcon, FileAudio
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { TranscriptionCard } from "@/components/transcription-card";
 
 export default function VisitDetail() {
   const params = useParams();
@@ -32,7 +33,7 @@ export default function VisitDetail() {
     if (!newNoteText.trim()) return;
     
     createNote.mutate(
-      { params: { id }, data: { type: "text", content: newNoteText } },
+      { id, data: { type: "text", content: newNoteText } },
       {
         onSuccess: () => {
           setNewNoteText("");
@@ -55,7 +56,7 @@ export default function VisitDetail() {
     // Based on the generated types, it expects `{ params: { id }, data: UploadMediaBody }`
     // UploadMediaBody is `{ file: Blob, type: string, caption?: string }`
     uploadMedia.mutate(
-      { params: { id }, data: { file, type } },
+      { id, data: { file, type } },
       {
         onSuccess: () => {
           toast({ title: "Media uploaded" });
@@ -140,7 +141,14 @@ export default function VisitDetail() {
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-4">
           <h2 className="text-lg font-bold">Field Notes</h2>
-          
+
+          {/* AI transcriptions for voice media */}
+          {visit.media
+            ?.filter((m) => m.type === "voice_note" || m.type === "interview")
+            .map((m) => (
+              <TranscriptionCard key={`transcription-${m.id}`} media={m} />
+            ))}
+
           {/* Notes Feed */}
           <div className="space-y-4">
             {visit.notes?.map((note) => (
