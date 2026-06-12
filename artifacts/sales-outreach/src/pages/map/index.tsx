@@ -256,7 +256,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-3.5rem)] w-full">
+    <div className="relative h-full w-full">
       <div ref={mapContainer} className="absolute inset-0" />
 
       {/* TEMP diagnostic — read this back to debug the blank map */}

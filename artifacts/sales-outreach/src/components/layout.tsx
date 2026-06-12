@@ -22,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isFullBleed = location === "/";
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-background text-foreground">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-background text-foreground">
       {/* Top App Bar */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
         <div className="flex items-center gap-2 font-semibold text-primary">
