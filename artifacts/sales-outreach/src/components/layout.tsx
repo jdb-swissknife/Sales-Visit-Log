@@ -50,7 +50,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isFullBleed = location === "/";
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-background text-foreground">
+    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-background text-foreground">
       {/* Top App Bar */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
         <div className="flex items-center gap-2 font-semibold text-primary">
@@ -60,7 +60,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <OfflineStatusBadge />
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
           <nav className="flex-1 space-y-1 p-4">
@@ -85,7 +85,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <main
+          className={
+            isFullBleed
+              ? "flex flex-1 flex-col min-h-0 pb-16 md:pb-0"
+              : "flex-1 min-h-0 overflow-y-auto pb-16 md:pb-0"
+          }
+        >
           {isFullBleed ? (
             children
           ) : (
