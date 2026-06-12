@@ -59,14 +59,12 @@ const CALLBACK_PRESETS = [
 const MINNEAPOLIS: [number, number] = [-93.2650, 44.9778];
 
 export default function MapPage() {
-  const rootRef = useRef<HTMLDivElement>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const loadedRef = useRef(false);
   const tileErrRef = useRef(0);
   const [mapError, setMapError] = useState(false);
-  const [diag, setDiag] = useState("init…");
 
   const { data: businesses } = useListBusinesses();
   const [selected, setSelected] = useState<Business | null>(null);
@@ -91,12 +89,6 @@ export default function MapPage() {
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
-    const size = () => {
-      const el = mapContainer.current;
-      return el ? `${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}` : "0x0";
-    };
-    setDiag(`init dpr=${window.devicePixelRatio} ${size()}`);
-
     let map: maplibregl.Map;
     try {
       map = new maplibregl.Map({
@@ -110,7 +102,6 @@ export default function MapPage() {
       // WebGL unavailable (older devices, hardware acceleration off, etc.).
       // Surface a fallback instead of crashing the whole page.
       console.error("Map init failed", err);
-      setDiag(`WebGL init threw: ${err instanceof Error ? err.message : String(err)}`);
       setMapError(true);
       return;
     }
@@ -176,27 +167,6 @@ export default function MapPage() {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
-
-  // LIVE diagnostic: walk the DOM height chain so we can see exactly which
-  // ancestor collapses to 0px on the user's webview.
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const el = rootRef.current;
-      if (!el) return;
-      const h = (n: Element | null | undefined) =>
-        n ? Math.round((n as HTMLElement).clientHeight) : "—";
-      const main = el.parentElement; // <main>
-      const row = main?.parentElement; // content row
-      const shell = row?.parentElement; // app shell root
-      setDiag(
-        `win=${window.innerHeight} doc=${document.documentElement.clientHeight} ` +
-          `body=${h(document.body)} shell=${h(shell)} row=${h(row)} ` +
-          `main=${h(main)} root=${h(el)} inner=${h(mapContainer.current)} | ` +
-          `${loadedRef.current ? "loaded" : "loading"} tileErr=${tileErrRef.current}`
-      );
-    }, 500);
-    return () => window.clearInterval(id);
   }, []);
 
   // Sync markers with data
@@ -275,13 +245,8 @@ export default function MapPage() {
   }
 
   return (
-    <div ref={rootRef} className="relative flex flex-col grow min-h-0 w-full">
+    <div className="relative flex flex-col grow min-h-0 w-full">
       <div ref={mapContainer} className="grow min-h-0 w-full" />
-
-      {/* TEMP diagnostic — read this back to debug the blank map */}
-      <div className="absolute left-2 top-2 z-30 max-w-[92%] rounded bg-black/80 px-2 py-1 font-mono text-[11px] leading-tight text-green-300">
-        {diag}
-      </div>
 
       {/* Fallback when the map (WebGL) can't render on this device */}
       {mapError && (
