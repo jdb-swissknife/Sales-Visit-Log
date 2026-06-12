@@ -275,8 +275,8 @@ export default function MapPage() {
   }
 
   return (
-    <div ref={rootRef} className="relative grow min-h-0 w-full">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div ref={rootRef} className="relative flex flex-col grow min-h-0 w-full">
+      <div ref={mapContainer} className="grow min-h-0 w-full" />
 
       {/* TEMP diagnostic — read this back to debug the blank map */}
       <div className="absolute left-2 top-2 z-30 max-w-[92%] rounded bg-black/80 px-2 py-1 font-mono text-[11px] leading-tight text-green-300">
