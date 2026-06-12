@@ -1,1 +1,2 @@
 - [Production DB self-heal on deploy](prod-db-startup-backfill.md) — prod DB is separate from dev and seed data never triggers background geocoding; data-only backfill on server startup fixes it after redeploy.
+- [MapLibre map robustness](maplibre-map-robustness.md) — map "shows nothing" causes (WebGL throw, zero-size container, tiles never load) and the try/catch + resize + timeout + fallback-list pattern.

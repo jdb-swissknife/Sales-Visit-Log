@@ -62,6 +62,7 @@ export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const [mapError, setMapError] = useState(false);
 
   const { data: businesses } = useListBusinesses();
   const [selected, setSelected] = useState<Business | null>(null);
@@ -85,22 +86,60 @@ export default function MapPage() {
   // Init map once
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: mapContainer.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
-      center: MINNEAPOLIS,
-      zoom: 12,
-      attributionControl: { compact: true },
-    });
+
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: mapContainer.current,
+        style: "https://tiles.openfreemap.org/styles/liberty",
+        center: MINNEAPOLIS,
+        zoom: 12,
+        attributionControl: { compact: true },
+      });
+    } catch (err) {
+      // WebGL unavailable (older devices, hardware acceleration off, etc.).
+      // Surface a fallback instead of crashing the whole page.
+      console.error("Map init failed", err);
+      setMapError(true);
+      return;
+    }
+
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
     });
     map.addControl(geolocate, "top-right");
-    map.on("load", () => geolocate.trigger());
+
+    // If the map never finishes loading (style/tiles blocked, stalled WebGL),
+    // fall back to the usable list instead of leaving a blank canvas forever.
+    const loadTimeout = window.setTimeout(() => {
+      if (!mapRef.current) return;
+      console.error("Map load timed out — showing fallback");
+      setMapError(true);
+    }, 8000);
+
+    map.on("load", () => {
+      window.clearTimeout(loadTimeout);
+      // Container can size after mount (dvh on mobile, layout settling),
+      // which otherwise leaves MapLibre with a 0-size blank canvas.
+      map.resize();
+      try {
+        geolocate.trigger();
+      } catch {
+        /* geolocation optional */
+      }
+    });
+    map.on("error", (e) => console.error("Map error", e?.error ?? e));
     mapRef.current = map;
+
+    // Keep the canvas in sync with container size changes.
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(mapContainer.current);
+
     return () => {
+      window.clearTimeout(loadTimeout);
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -184,6 +223,39 @@ export default function MapPage() {
   return (
     <div className="relative h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-3.5rem)] w-full">
       <div ref={mapContainer} className="absolute inset-0" />
+
+      {/* Fallback when the map (WebGL) can't render on this device */}
+      {mapError && (
+        <div className="absolute inset-0 z-20 overflow-y-auto bg-background p-4">
+          <div className="mx-auto max-w-md space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
+              Map can't render on this device — showing your located businesses as a list.
+            </div>
+            {located.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => {
+                  setSelected(b);
+                  setOutcome(null);
+                  setCallbackDays(null);
+                  setNote("");
+                }}
+                className="flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2 text-left"
+              >
+                <span
+                  className="inline-block h-3 w-3 shrink-0 rounded-full"
+                  style={{ background: STATUS_COLORS[b.status] ?? "#64748b" }}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{b.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{b.address}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-card/90 px-3 py-2 text-xs shadow backdrop-blur">
