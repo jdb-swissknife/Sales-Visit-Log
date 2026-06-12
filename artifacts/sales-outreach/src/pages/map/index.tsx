@@ -59,6 +59,7 @@ const CALLBACK_PRESETS = [
 const MINNEAPOLIS: [number, number] = [-93.2650, 44.9778];
 
 export default function MapPage() {
+  const rootRef = useRef<HTMLDivElement>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -180,6 +181,30 @@ export default function MapPage() {
     };
   }, []);
 
+  // Safety net: some in-app/older webviews don't resolve flex/percentage
+  // heights, collapsing the map to 0px tall. If that happens, measure the
+  // viewport and force an explicit pixel height so the canvas has room.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const applyHeight = () => {
+      el.style.height = ""; // re-measure CSS-driven height first
+      if (el.clientHeight > 0) return; // flex layout worked — leave it alone
+      const top = el.getBoundingClientRect().top;
+      const bottomNav = window.innerWidth < 768 ? 64 : 0; // h-16 mobile nav
+      const h = window.innerHeight - top - bottomNav;
+      el.style.height = `${Math.max(h, 240)}px`;
+      mapRef.current?.resize();
+    };
+    applyHeight();
+    window.addEventListener("resize", applyHeight);
+    window.addEventListener("orientationchange", applyHeight);
+    return () => {
+      window.removeEventListener("resize", applyHeight);
+      window.removeEventListener("orientationchange", applyHeight);
+    };
+  }, []);
+
   // Sync markers with data
   useEffect(() => {
     const map = mapRef.current;
@@ -256,7 +281,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={rootRef} className="relative grow min-h-0 w-full">
       <div ref={mapContainer} className="absolute inset-0" />
 
       {/* TEMP diagnostic — read this back to debug the blank map */}

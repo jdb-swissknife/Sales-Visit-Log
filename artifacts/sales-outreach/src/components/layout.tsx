@@ -31,7 +31,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden w-64 flex-col border-r border-border bg-card md:flex">
           <nav className="flex-1 space-y-1 p-4">
@@ -56,7 +56,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <main
+          className={
+            isFullBleed
+              ? "flex flex-1 flex-col min-h-0 pb-16 md:pb-0"
+              : "flex-1 min-h-0 overflow-y-auto pb-16 md:pb-0"
+          }
+        >
           {isFullBleed ? (
             children
           ) : (
