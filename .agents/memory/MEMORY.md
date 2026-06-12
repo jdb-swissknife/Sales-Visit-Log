@@ -1,0 +1,1 @@
+- [Production DB self-heal on deploy](prod-db-startup-backfill.md) — prod DB is separate from dev and seed data never triggers background geocoding; data-only backfill on server startup fixes it after redeploy.

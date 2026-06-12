@@ -1,8 +1,70 @@
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { db, businessesTable } from "@workspace/db";
 import { logger } from "./logger";
 
 export interface GeoPoint {
   latitude: number;
   longitude: number;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+let backfillRunning = false;
+
+/**
+ * Backfill coordinates for every business that has an address but no latitude.
+ * Runs in the background on server startup so a freshly seeded database
+ * (including production after a deploy) self-heals without manual scripts.
+ * Idempotent: rows that already have coordinates are skipped, so repeat
+ * startups only process whatever is still missing.
+ */
+export async function backfillMissingGeocodes(): Promise<void> {
+  if (backfillRunning) return;
+  backfillRunning = true;
+  try {
+    const pending = await db
+      .select({ id: businessesTable.id, address: businessesTable.address })
+      .from(businessesTable)
+      .where(and(isNotNull(businessesTable.address), isNull(businessesTable.latitude)));
+
+    if (pending.length === 0) {
+      logger.info("Geocode backfill: nothing to do");
+      return;
+    }
+
+    logger.info({ count: pending.length }, "Geocode backfill: starting");
+    let ok = 0;
+    let fail = 0;
+
+    for (const b of pending) {
+      const address = b.address;
+      if (!address) continue;
+      try {
+        const point = await geocodeAddress(address);
+        if (point) {
+          await db
+            .update(businessesTable)
+            .set({ latitude: point.latitude, longitude: point.longitude, geocodedAt: new Date() })
+            .where(eq(businessesTable.id, b.id));
+          ok++;
+        } else {
+          fail++;
+        }
+      } catch (err) {
+        fail++;
+        logger.warn({ err, businessId: b.id }, "Geocode backfill: row failed");
+      }
+      // Keep under the OpenStreetMap Nominatim usage policy (max 1 req/sec)
+      // since each row may fall back to it after a Census miss.
+      await sleep(1100);
+    }
+
+    logger.info({ ok, fail }, "Geocode backfill: complete");
+  } catch (err) {
+    logger.error({ err }, "Geocode backfill: failed");
+  } finally {
+    backfillRunning = false;
+  }
 }
 
 /**
