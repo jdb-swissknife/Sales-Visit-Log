@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "postgresql-16"]
+modules = ["nodejs-24", "postgresql-16", "python-3.11"]
 
 [deployment]
 router = "application"
@@ -21,6 +21,7 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+packages = ["unzipNLS"]
 
 [[ports]]
 localPort = 8080
@@ -49,3 +50,6 @@ externalPort = 3001
 [[ports]]
 localPort = 18331
 externalPort = 4200
+
+[objectStorage]
+defaultBucketID = "replit-objstore-15348abd-39fa-4edb-b7c0-52ff2a9bbbd1"
