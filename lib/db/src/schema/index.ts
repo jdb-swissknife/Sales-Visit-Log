@@ -3,3 +3,7 @@ export * from "./visits";
 export * from "./notes";
 export * from "./media";
 export * from "./events";
+export * from "./agent-suggestions";
+export * from "./agent-runs";
+export * from "./agent-event-receipts";
+export * from "./insights";

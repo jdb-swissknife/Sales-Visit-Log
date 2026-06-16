@@ -1,5 +1,6 @@
 import { db, eventsTable } from "@workspace/db";
 import { logger } from "./logger";
+import { sendWebhook, shouldWebhook } from "./webhooks";
 
 export interface LogEventInput {
   type: string;
@@ -26,6 +27,17 @@ export async function logEvent(input: LogEventInput): Promise<void> {
       payload: input.payload ?? null,
       source: input.source ?? "server",
     });
+
+    // Push key events to Hermes in near-real-time (no-op unless configured)
+    if (shouldWebhook(input.type)) {
+      sendWebhook(input.type, {
+        entityType: input.entityType ?? null,
+        entityId: input.entityId ?? null,
+        businessId: input.businessId ?? null,
+        visitId: input.visitId ?? null,
+        payload: input.payload ?? null,
+      });
+    }
   } catch (err) {
     logger.error({ err, eventType: input.type }, "Failed to log event");
   }

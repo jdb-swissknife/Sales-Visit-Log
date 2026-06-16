@@ -8,6 +8,8 @@ import mediaRouter from "./media";
 import statsRouter from "./stats";
 import routesRouter from "./routes";
 import eventsRouter from "./events";
+import agentRouter from "./agent";
+import suggestionsRouter from "./suggestions";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(mediaRouter);
 router.use(statsRouter);
 router.use(routesRouter);
 router.use(eventsRouter);
+router.use(agentRouter);
+router.use(suggestionsRouter);
 
 export default router;
