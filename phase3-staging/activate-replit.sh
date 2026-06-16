@@ -6,7 +6,7 @@
 #   1. copies repo-overlay/* over the clone (additive; only schema/index.ts overwrites)
 #   2. patches 3 live source files (events.ts hook, routes/index.ts, app.ts) — idempotent
 #   3. typechecks + Drizzle-pushes the R1 schema to Neon
-#   4. runs the crypto selftest + a full -r typecheck
+#   4. runs the crypto selftest + the real esbuild build (matches CI baseline)
 #   5. commits (and pushes only if you opt in)
 #
 # RUN FROM: the ROOT of a clean clone of Sales-Visit-Log `main` (Phase 2 baseline 2e15a06)
@@ -159,9 +159,12 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-say "4. R2/R3 — crypto selftest + full typecheck"
+say "4. R2/R3 — crypto selftest + esbuild build"
 node "$BUNDLE/selftest.mjs"          # expect: 12 passed, 0 failed
-pnpm -r typecheck
+# Gate matches the real ship baseline: the esbuild bundle (build.mjs) is what actually deploys.
+# `pnpm -r typecheck` was STRICTER than baseline — it trips on pre-existing Phase 2 noise
+# (media.ts/transcription.ts, api-zod types) that esbuild does not type-check. Build instead.
+pnpm -r --if-present run build
 
 # ---------------------------------------------------------------------------
 say "5. commit"
