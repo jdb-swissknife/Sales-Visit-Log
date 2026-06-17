@@ -11,28 +11,30 @@
  * Trigger any app action that calls logEvent (e.g. create a visit). Each delivery prints
  * a PASS/FAIL line: signature validity, replay-window freshness, and the parsed envelope.
  *
- * Verifies the SAME contract as the inbound receiver:
- *   HMAC-SHA256 over `${x-hermes-timestamp}.${rawBody}` == `x-hermes-signature` (sha256=<hex>),
- *   timestamp within ±5 min.
+ * Verifies the SAME contract as the SHIPPED sender (lib/webhooks.ts + webhook-envelope.ts):
+ *   x-outreach-signature = sha256=<hex of the RAW body only>   (NO timestamp prefix)
+ *   x-outreach-timestamp = unix SECONDS, within ±5 min
+ *   x-outreach-event / x-outreach-event-id / x-outreach-version also sent
  */
 import http from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const SECRET = process.env.HERMES_WEBHOOK_SECRET;
 const PORT = Number(process.env.MOCK_PORT || 4505);
-const REPLAY_WINDOW_MS = 5 * 60 * 1000;
+const REPLAY_WINDOW_SECONDS = 5 * 60;
 
 if (!SECRET) {
   console.error("HERMES_WEBHOOK_SECRET is required (must match the app's secret).");
   process.exit(1);
 }
 
-function signPayload(secret, signed) {
-  return "sha256=" + createHmac("sha256", secret).update(signed, "utf8").digest("hex");
+/** sha256=<hex> HMAC over the RAW body only — matches signBody() in webhook-envelope.ts. */
+function signBody(secret, raw) {
+  return "sha256=" + createHmac("sha256", secret).update(raw, "utf8").digest("hex");
 }
-function verify(secret, signed, candidate) {
+function verify(secret, raw, candidate) {
   if (!candidate) return false;
-  const a = Buffer.from(signPayload(secret, signed), "utf8");
+  const a = Buffer.from(signBody(secret, raw), "utf8");
   const b = Buffer.from(candidate, "utf8");
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
@@ -45,12 +47,13 @@ const server = http.createServer((req, res) => {
   req.on("data", (c) => chunks.push(c));
   req.on("end", () => {
     const raw = Buffer.concat(chunks).toString("utf8");
-    const sig = req.headers["x-hermes-signature"];
-    const ts = req.headers["x-hermes-timestamp"];
-    const eventId = req.headers["x-hermes-event-id"];
+    const sig = req.headers["x-outreach-signature"];
+    const ts = req.headers["x-outreach-timestamp"];
+    const eventId = req.headers["x-outreach-event-id"];
 
-    const sigOk = verify(SECRET, `${ts}.${raw}`, sig);
-    const fresh = ts && Number.isFinite(Number(ts)) && Math.abs(Date.now() - Number(ts)) <= REPLAY_WINDOW_MS;
+    const sigOk = verify(SECRET, raw, sig);
+    const tsNum = Number(ts);
+    const fresh = ts && Number.isFinite(tsNum) && Math.abs(Date.now() / 1000 - tsNum) <= REPLAY_WINDOW_SECONDS;
     let env = null, parseOk = false;
     try { env = JSON.parse(raw); parseOk = true; } catch { /* noop */ }
 
@@ -58,10 +61,11 @@ const server = http.createServer((req, res) => {
     const ok = sigOk && fresh && parseOk;
     console.log(`\n[#${n}] ${req.url}  ${ok ? "PASS ✅" : "FAIL ❌"}`);
     console.log(`  signature: ${sigOk ? "valid" : "INVALID"}   timestamp: ${fresh ? "fresh" : "STALE"}   json: ${parseOk ? "ok" : "UNPARSEABLE"}`);
-    console.log(`  x-hermes-event-id: ${eventId}`);
+    console.log(`  x-outreach-event-id: ${eventId}`);
     if (env) {
-      console.log(`  envelope: version=${env.version} type=${env.eventType} eventId=${env.eventId} businessId=${env.businessId ?? "null"} occurredAt=${env.occurredAt}`);
-      if (env.data && Object.keys(env.data).length) console.log(`  data: ${JSON.stringify(env.data)}`);
+      const bizId = env.business?.id ?? "null";
+      console.log(`  envelope: version=${env.version} type=${env.eventType} eventId=${env.eventId} business.id=${bizId} occurredAt=${env.occurredAt}`);
+      if (env.appContext && Object.keys(env.appContext).length) console.log(`  appContext: ${JSON.stringify(env.appContext)}`);
     }
 
     // Respond like a healthy Hermes so the app logs a successful delivery.
