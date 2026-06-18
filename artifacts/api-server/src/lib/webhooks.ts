@@ -132,6 +132,9 @@ async function post(url: string, body: string, envelope: WebhookEnvelopeType): P
     [EVENT_ID_HEADER]: envelope.eventId,
     [TIMESTAMP_HEADER]: String(tsSec),
     [VERSION_HEADER]: WEBHOOK_VERSION,
+    // Hermes reads X-GitHub-Event for its transport-log event label (gateway/platforms/webhook.py:485);
+    // does NOT affect Svix verification or routing. Cosmetic: makes the log show the real event type.
+    "x-github-event": envelope.eventType,
   };
   const secret = process.env.HERMES_WEBHOOK_SECRET;
   if (secret) {
