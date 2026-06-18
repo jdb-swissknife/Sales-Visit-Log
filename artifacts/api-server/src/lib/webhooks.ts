@@ -6,11 +6,15 @@ import {
   WEBHOOK_VERSION,
   CANONICAL_EVENT_TYPES,
   signBody,
+  signSvix,
   SIGNATURE_HEADER,
   EVENT_HEADER,
   EVENT_ID_HEADER,
   TIMESTAMP_HEADER,
   VERSION_HEADER,
+  SVIX_ID_HEADER,
+  SVIX_TIMESTAMP_HEADER,
+  SVIX_SIGNATURE_HEADER,
   type CanonicalEventType,
   type WebhookEnvelopeType,
 } from "./webhook-envelope";
@@ -121,15 +125,22 @@ async function buildEnvelope(
 }
 
 async function post(url: string, body: string, envelope: WebhookEnvelopeType): Promise<Response> {
+  const tsSec = Math.floor(Date.now() / 1000);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     [EVENT_HEADER]: envelope.eventType,
     [EVENT_ID_HEADER]: envelope.eventId,
-    [TIMESTAMP_HEADER]: String(Math.floor(Date.now() / 1000)),
+    [TIMESTAMP_HEADER]: String(tsSec),
     [VERSION_HEADER]: WEBHOOK_VERSION,
   };
   const secret = process.env.HERMES_WEBHOOK_SECRET;
-  if (secret) headers[SIGNATURE_HEADER] = signBody(body, secret);
+  if (secret) {
+    headers[SIGNATURE_HEADER] = signBody(body, secret);
+    // Svix / Standard-Webhooks signature — what Hermes actually validates.
+    headers[SVIX_ID_HEADER] = envelope.eventId;
+    headers[SVIX_TIMESTAMP_HEADER] = String(tsSec);
+    headers[SVIX_SIGNATURE_HEADER] = signSvix(envelope.eventId, tsSec, body, secret);
+  }
   return fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(10_000) });
 }
 

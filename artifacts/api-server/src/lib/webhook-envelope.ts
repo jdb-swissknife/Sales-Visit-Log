@@ -65,9 +65,31 @@ export const EVENT_ID_HEADER = "x-outreach-event-id";
 export const TIMESTAMP_HEADER = "x-outreach-timestamp";
 export const VERSION_HEADER = "x-outreach-version";
 
+// Svix / Standard-Webhooks headers (what Hermes validates).
+export const SVIX_ID_HEADER = "svix-id";
+export const SVIX_TIMESTAMP_HEADER = "svix-timestamp";
+export const SVIX_SIGNATURE_HEADER = "svix-signature";
+
 /** sha256=<hex> HMAC of the raw request body. */
 export function signBody(rawBody: string | Buffer, secret: string): string {
   return `sha256=${createHmac("sha256", secret).update(rawBody).digest("hex")}`;
+}
+
+/**
+ * Svix / Standard-Webhooks signature:
+ *   `v1,<base64(HMAC-SHA256(secret, `${id}.${timestamp}.${body}`))>`.
+ * Hermes keys the HMAC with the raw secret STRING bytes (not base64/hex-decoded) —
+ * verified empirically against the live Hermes endpoint (utf8-raw -> 202 accepted).
+ */
+export function signSvix(
+  id: string,
+  timestamp: number,
+  rawBody: string | Buffer,
+  secret: string,
+): string {
+  const body = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
+  const sig = createHmac("sha256", secret).update(`${id}.${timestamp}.${body}`).digest("base64");
+  return `v1,${sig}`;
 }
 
 export function verifySignature(

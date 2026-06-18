@@ -202,8 +202,8 @@ export const ListVisitsForBusinessResponseItem = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
@@ -222,8 +222,8 @@ export const ListVisitsResponseItem = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
@@ -238,8 +238,8 @@ export const CreateVisitBody = zod.object({
   businessId: zod.number(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
 });
 
@@ -256,8 +256,8 @@ export const GetVisitResponse = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
   notes: zod.array(
     zod.object({
@@ -319,8 +319,8 @@ export const UpdateVisitBody = zod.object({
   outcome: zod
     .enum(["positive", "neutral", "negative", "follow_up_needed"])
     .optional(),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
 });
 
@@ -330,8 +330,8 @@ export const UpdateVisitResponse = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().optional(),
-  contactPhone: zod.string().optional(),
+  contactName: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
