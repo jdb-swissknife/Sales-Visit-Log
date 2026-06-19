@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { seedBusinesses } from "@workspace/db/seed";
 import { backfillMissingGeocodes } from "./lib/geocode";
+import { startCallbackCron } from "./lib/callback-cron";
 
 const rawPort = process.env["PORT"];
 
@@ -30,4 +31,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Deterministic in-app suggestion producers (no LLM, no external agent).
+  startCallbackCron();
 });
