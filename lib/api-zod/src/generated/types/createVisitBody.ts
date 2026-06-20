@@ -14,4 +14,5 @@ export interface CreateVisitBody {
   contactName?: string;
   contactPhone?: string;
   nextActionDate?: Date;
+  repId?: string;
 }

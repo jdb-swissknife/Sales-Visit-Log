@@ -6,6 +6,8 @@ import { businessesTable } from "./businesses";
 export const visitsTable = pgTable("visits", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").notNull().references(() => businessesTable.id, { onDelete: "cascade" }),
+  /** Free-form rep identifier until team auth lands; mirrors agent_suggestions. */
+  repId: text("rep_id"),
   visitedAt: timestamp("visited_at", { withTimezone: true }).notNull().defaultNow(),
   outcome: text("outcome").notNull().default("neutral"),
   contactName: text("contact_name"),

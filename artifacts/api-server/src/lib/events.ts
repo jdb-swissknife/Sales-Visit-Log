@@ -8,6 +8,7 @@ export interface LogEventInput {
   entityId?: number;
   businessId?: number | null;
   visitId?: number | null;
+  repId?: string | null;
   payload?: Record<string, unknown>;
   source?: "server" | "client";
 }
@@ -24,6 +25,7 @@ export async function logEvent(input: LogEventInput): Promise<void> {
       entityId: input.entityId ?? null,
       businessId: input.businessId ?? null,
       visitId: input.visitId ?? null,
+      repId: input.repId ?? null,
       payload: input.payload ?? null,
       source: input.source ?? "server",
     });
@@ -35,6 +37,7 @@ export async function logEvent(input: LogEventInput): Promise<void> {
         entityId: input.entityId ?? null,
         businessId: input.businessId ?? null,
         visitId: input.visitId ?? null,
+        repId: input.repId ?? null,
         payload: input.payload ?? null,
       });
     }

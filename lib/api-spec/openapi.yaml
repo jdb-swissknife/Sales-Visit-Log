@@ -457,6 +457,12 @@ paths:
           description: Filter by event type prefix (e.g. "visit.")
           schema:
             type: string
+        - name: repId
+          in: query
+          required: false
+          description: Scope the feed to a single rep (events with a matching rep_id)
+          schema:
+            type: string
         - name: limit
           in: query
           required: false
@@ -757,6 +763,8 @@ components:
         nextActionDate:
           type: string
           format: date-time
+        repId:
+          type: string
       required:
         - businessId
         - visitedAt
@@ -890,15 +898,23 @@ components:
           type: string
         entityType:
           type: string
+          nullable: true
         entityId:
           type: integer
+          nullable: true
         businessId:
           type: integer
+          nullable: true
         visitId:
           type: integer
+          nullable: true
         payload:
           type: object
           additionalProperties: true
+          nullable: true
+        repId:
+          type: string
+          nullable: true
         source:
           type: string
         createdAt:

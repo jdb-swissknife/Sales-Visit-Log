@@ -1,0 +1,425 @@
+From 5b3342ed256c4f188d1ae44914d9686469bb1c7d Mon Sep 17 00:00:00 2001
+From: Hermes Dev <tonkatriathlete@gmail.com>
+Date: Sat, 20 Jun 2026 18:30:06 +0000
+Subject: [PATCH] Rep-scope GET /api/agent/events (server-side repId filter)
+
+Close the gap where the client sends ?repId= but the server ignored it
+(Case B: events carried no rep identity, nor did the linked visit).
+
+- schema: add nullable rep_id to events (+ index on rep_id,type,created_at)
+  and to visits (free-form rep id, mirrors agent_suggestions/insights)
+- logEvent: accept + persist repId; forward it in the webhook envelope
+- visits routes: populate the event rep from the originating visit
+  (create/update/delete)
+- agent events route: WHERE rep_id = ? when repId is supplied; absent => unfiltered;
+  NULL rep_id never matches an explicit repId (feeds stay isolated)
+- api-zod: ListEventsQueryParams gains repId; CreateVisitBody gains optional repId;
+  ListEventsResponseItem columns made .nullable().optional() (payload + the other
+  nullable event columns) so NULL rows no longer 500 the feed
+- openapi.yaml updated as the generation source of truth
+- tests: new agent-events-repid suite (rep isolation, back-compat, type+repId
+  compose, write-path population, NULL-payload round-trip)
+
+Backfill is a documented no-op: no historical rep was derivable.
+---
+ artifacts/api-server/src/lib/events.ts        |   3 +
+ artifacts/api-server/src/lib/webhooks.ts      |   1 +
+ artifacts/api-server/src/routes/agent.ts      |   4 +
+ artifacts/api-server/src/routes/visits.ts     |   3 +
+ .../tests/agent-events-repid.test.ts          | 121 ++++++++++++++++++
+ lib/api-spec/openapi.yaml                     |  16 +++
+ lib/api-zod/src/generated/api.ts              |  16 ++-
+ .../src/generated/types/createVisitBody.ts    |   1 +
+ lib/api-zod/src/generated/types/event.ts      |  11 +-
+ .../src/generated/types/listEventsParams.ts   |   4 +
+ lib/db/src/schema/events.ts                   |   6 +
+ lib/db/src/schema/visits.ts                   |   2 +
+ 12 files changed, 178 insertions(+), 10 deletions(-)
+ create mode 100644 artifacts/api-server/tests/agent-events-repid.test.ts
+
+diff --git a/artifacts/api-server/src/lib/events.ts b/artifacts/api-server/src/lib/events.ts
+index 4d40aaa..61a1dac 100644
+--- a/artifacts/api-server/src/lib/events.ts
++++ b/artifacts/api-server/src/lib/events.ts
+@@ -8,6 +8,7 @@ export interface LogEventInput {
+   entityId?: number;
+   businessId?: number | null;
+   visitId?: number | null;
++  repId?: string | null;
+   payload?: Record<string, unknown>;
+   source?: "server" | "client";
+ }
+@@ -24,6 +25,7 @@ export async function logEvent(input: LogEventInput): Promise<void> {
+       entityId: input.entityId ?? null,
+       businessId: input.businessId ?? null,
+       visitId: input.visitId ?? null,
++      repId: input.repId ?? null,
+       payload: input.payload ?? null,
+       source: input.source ?? "server",
+     });
+@@ -35,6 +37,7 @@ export async function logEvent(input: LogEventInput): Promise<void> {
+         entityId: input.entityId ?? null,
+         businessId: input.businessId ?? null,
+         visitId: input.visitId ?? null,
++        repId: input.repId ?? null,
+         payload: input.payload ?? null,
+       });
+     }
+diff --git a/artifacts/api-server/src/lib/webhooks.ts b/artifacts/api-server/src/lib/webhooks.ts
+index ef5879a..a2bf792 100644
+--- a/artifacts/api-server/src/lib/webhooks.ts
++++ b/artifacts/api-server/src/lib/webhooks.ts
+@@ -42,6 +42,7 @@ export interface WebhookEventData {
+   entityId?: number | null;
+   businessId?: number | null;
+   visitId?: number | null;
++  repId?: string | null;
+   payload?: Record<string, unknown> | null;
+ }
+ 
+diff --git a/artifacts/api-server/src/routes/agent.ts b/artifacts/api-server/src/routes/agent.ts
+index 5f49eff..f9e75de 100644
+--- a/artifacts/api-server/src/routes/agent.ts
++++ b/artifacts/api-server/src/routes/agent.ts
+@@ -43,6 +43,10 @@ router.get("/agent/events", async (req, res): Promise<void> => {
+   const conditions: SQL[] = [];
+   if (query.data.since) conditions.push(gt(eventsTable.createdAt, new Date(query.data.since)));
+   if (query.data.type) conditions.push(like(eventsTable.type, `${query.data.type}%`));
++  // Scope to a single rep when requested. NULL rep_id rows never match an
++  // explicit repId, so two reps' feeds stay isolated; omitting repId is
++  // unfiltered (back-compat with the pre-rep single-rep behavior).
++  if (query.data.repId) conditions.push(eq(eventsTable.repId, query.data.repId));
+ 
+   const limit = Math.min(query.data.limit ?? 100, 500);
+ 
+diff --git a/artifacts/api-server/src/routes/visits.ts b/artifacts/api-server/src/routes/visits.ts
+index 6d61585..f39c911 100644
+--- a/artifacts/api-server/src/routes/visits.ts
++++ b/artifacts/api-server/src/routes/visits.ts
+@@ -91,6 +91,7 @@ router.post("/visits", async (req, res): Promise<void> => {
+     entityId: visit.id,
+     businessId: visit.businessId,
+     visitId: visit.id,
++    repId: visit.repId,
+     payload: { outcome: visit.outcome, businessName: business[0]?.name },
+   });
+ 
+@@ -195,6 +196,7 @@ router.put("/visits/:id", async (req, res): Promise<void> => {
+     entityId: updated.id,
+     businessId: updated.businessId,
+     visitId: updated.id,
++    repId: updated.repId,
+     payload: { outcome: updated.outcome },
+   });
+ 
+@@ -237,6 +239,7 @@ router.delete("/visits/:id", async (req, res): Promise<void> => {
+     entityId: deleted.id,
+     businessId: deleted.businessId,
+     visitId: deleted.id,
++    repId: deleted.repId,
+   });
+   res.sendStatus(204);
+ });
+diff --git a/artifacts/api-server/tests/agent-events-repid.test.ts b/artifacts/api-server/tests/agent-events-repid.test.ts
+new file mode 100644
+index 0000000..437ef62
+--- /dev/null
++++ b/artifacts/api-server/tests/agent-events-repid.test.ts
+@@ -0,0 +1,121 @@
++import assert from "node:assert/strict";
++import type { AddressInfo } from "node:net";
++import type { Server } from "node:http";
++import { after, before, describe, it } from "node:test";
++
++type DbModule = typeof import("@workspace/db");
++
++// Same DB-gating convention as callback-cron.test.ts: only run when a database
++// is configured; skip cleanly otherwise.
++const d = process.env.DATABASE_URL ? describe : describe.skip;
++
++d("GET /api/agent/events — repId scoping", () => {
++  let dbm: DbModule;
++  let server: Server;
++  let baseUrl = "";
++  const KEY = "test-agent-key";
++  const tag = `REPID-TEST ${Date.now()}`;
++  const repA = `rep-A-${Date.now()}`;
++  const repB = `rep-B-${Date.now()}`;
++  const repC = `rep-C-${Date.now()}`;
++  let businessId = 0;
++
++  const get = async (qs: string) => {
++    const res = await fetch(`${baseUrl}/api/agent/events${qs}`, {
++      headers: { authorization: `Bearer ${KEY}` },
++    });
++    return { status: res.status, body: (await res.json()) as any[] };
++  };
++
++  before(async () => {
++    process.env.AGENT_API_KEY = KEY;
++    process.env.HERMES_WEBHOOK_URL = ""; // keep logEvent's webhook a no-op
++    const appMod = await import("../src/app");
++    dbm = await import("@workspace/db");
++
++    const [biz] = await dbm.db
++      .insert(dbm.businessesTable)
++      .values({ name: `${tag} biz`, sector: "test" })
++      .returning({ id: dbm.businessesTable.id });
++    assert.ok(biz);
++    businessId = biz.id;
++
++    // Seed events directly with distinct rep_id values (+ a NULL-rep, NULL-payload row).
++    await dbm.db.insert(dbm.eventsTable).values([
++      { type: "visit.created", entityType: "visit", businessId, repId: repA, payload: { tag, who: "A1" } },
++      { type: "visit.created", entityType: "visit", businessId, repId: repA, payload: { tag, who: "A2" } },
++      { type: "visit.created", entityType: "visit", businessId, repId: repB, payload: { tag, who: "B1" } },
++      { type: "note.created", entityType: "note", businessId, repId: repA, payload: { tag, who: "A-note" } },
++      // NULL rep + NULL payload: must never match an explicit repId and must not 500 the feed.
++      { type: "visit.created", entityType: "visit", businessId, repId: null, payload: null },
++    ]);
++
++    server = appMod.default.listen(0);
++    await new Promise<void>((r) => server.once("listening", r));
++    const { port } = server.address() as AddressInfo;
++    baseUrl = `http://127.0.0.1:${port}`;
++  });
++
++  after(async () => {
++    await new Promise<void>((r) => server.close(() => r()));
++  });
++
++  it("scopes the feed to a single rep (rep-A only; rep-B and NULL-rep excluded)", async () => {
++    const { status, body } = await get(`?repId=${repA}&limit=500`);
++    assert.equal(status, 200);
++    const mine = body.filter((e) => e.payload?.tag === tag || e.repId === repA);
++    assert.ok(mine.length >= 3, `expected >=3 rep-A events, got ${mine.length}`);
++    assert.ok(mine.every((e) => e.repId === repA), "all returned events must be rep-A");
++    assert.ok(!body.some((e) => e.repId === repB), "rep-B must not appear");
++  });
++
++  it("omitting repId returns the unfiltered feed (back-compat: includes rep-B and NULL-rep rows)", async () => {
++    const { status, body } = await get(`?limit=500`);
++    assert.equal(status, 200);
++    const ours = body.filter((e) => e.businessId === businessId);
++    assert.ok(ours.some((e) => e.repId === repA), "rep-A present unfiltered");
++    assert.ok(ours.some((e) => e.repId === repB), "rep-B present unfiltered");
++    assert.ok(ours.some((e) => e.repId == null), "NULL-rep row present unfiltered");
++    // NULL payload row must round-trip without 500ing the feed.
++    const nullRow = ours.find((e) => e.repId == null);
++    assert.ok(nullRow, "null-rep row found");
++    assert.equal(nullRow.payload ?? null, null);
++  });
++
++  it("type + repId compose (type=visit&repId=rep-A&limit=1 → rep-A's newest visit, not the note)", async () => {
++    const { status, body } = await get(`?type=visit&repId=${repA}&limit=1`);
++    assert.equal(status, 200);
++    assert.equal(body.length, 1);
++    assert.equal(body[0].repId, repA);
++    assert.ok(body[0].type.startsWith("visit"), "must be a visit event");
++  });
++
++  it("two reps' feeds do not bleed (rep-B feed excludes rep-A)", async () => {
++    const { body } = await get(`?repId=${repB}&limit=500`);
++    assert.ok(body.every((e) => e.repId === repB), "all rep-B");
++    assert.ok(!body.some((e) => e.repId === repA), "no rep-A in rep-B feed");
++  });
++
++  it("write path: POST /api/visits with repId emits a visit.created event carrying that rep", async () => {
++    const res = await fetch(`${baseUrl}/api/visits`, {
++      method: "POST",
++      headers: { "content-type": "application/json" },
++      body: JSON.stringify({
++        businessId,
++        visitedAt: new Date().toISOString(),
++        outcome: "positive",
++        repId: repC,
++      }),
++    });
++    assert.equal(res.status, 201);
++    // logEvent runs fire-and-forget; poll briefly for the derived event.
++    let found: any;
++    for (let i = 0; i < 20 && !found; i++) {
++      const { body } = await get(`?type=visit&repId=${repC}&limit=10`);
++      found = body.find((e) => e.repId === repC);
++      if (!found) await new Promise((r) => setTimeout(r, 50));
++    }
++    assert.ok(found, "visit.created event with repId from the visit should be derivable");
++    assert.equal(found.type, "visit.created");
++  });
++});
+diff --git a/lib/api-spec/openapi.yaml b/lib/api-spec/openapi.yaml
+index 4327393..43d2e1a 100644
+--- a/lib/api-spec/openapi.yaml
++++ b/lib/api-spec/openapi.yaml
+@@ -457,6 +457,12 @@ paths:
+           description: Filter by event type prefix (e.g. "visit.")
+           schema:
+             type: string
++        - name: repId
++          in: query
++          required: false
++          description: Scope the feed to a single rep (events with a matching rep_id)
++          schema:
++            type: string
+         - name: limit
+           in: query
+           required: false
+@@ -757,6 +763,8 @@ components:
+         nextActionDate:
+           type: string
+           format: date-time
++        repId:
++          type: string
+       required:
+         - businessId
+         - visitedAt
+@@ -890,15 +898,23 @@ components:
+           type: string
+         entityType:
+           type: string
++          nullable: true
+         entityId:
+           type: integer
++          nullable: true
+         businessId:
+           type: integer
++          nullable: true
+         visitId:
+           type: integer
++          nullable: true
+         payload:
+           type: object
+           additionalProperties: true
++          nullable: true
++        repId:
++          type: string
++          nullable: true
+         source:
+           type: string
+         createdAt:
+diff --git a/lib/api-zod/src/generated/api.ts b/lib/api-zod/src/generated/api.ts
+index 41128c0..d103e42 100644
+--- a/lib/api-zod/src/generated/api.ts
++++ b/lib/api-zod/src/generated/api.ts
+@@ -241,6 +241,7 @@ export const CreateVisitBody = zod.object({
+   contactName: zod.string().nullish(),
+   contactPhone: zod.string().nullish(),
+   nextActionDate: zod.coerce.date().optional(),
++  repId: zod.string().optional(),
+ });
+ 
+ /**
+@@ -532,17 +533,22 @@ export const ListEventsQueryParams = zod.object({
+     .string()
+     .optional()
+     .describe('Filter by event type prefix (e.g. \"visit.\")'),
++  repId: zod.coerce
++    .string()
++    .optional()
++    .describe("Scope the feed to a single rep (events with a matching rep_id)"),
+   limit: zod.coerce.number().optional(),
+ });
+ 
+ export const ListEventsResponseItem = zod.object({
+   id: zod.number(),
+   type: zod.string(),
+-  entityType: zod.string().optional(),
+-  entityId: zod.number().optional(),
+-  businessId: zod.number().optional(),
+-  visitId: zod.number().optional(),
+-  payload: zod.record(zod.string(), zod.unknown()).optional(),
++  entityType: zod.string().nullable().optional(),
++  entityId: zod.number().nullable().optional(),
++  businessId: zod.number().nullable().optional(),
++  visitId: zod.number().nullable().optional(),
++  payload: zod.record(zod.string(), zod.unknown()).nullable().optional(),
++  repId: zod.string().nullable().optional(),
+   source: zod.string(),
+   createdAt: zod.coerce.date(),
+ });
+diff --git a/lib/api-zod/src/generated/types/createVisitBody.ts b/lib/api-zod/src/generated/types/createVisitBody.ts
+index 2296c46..d65f808 100644
+--- a/lib/api-zod/src/generated/types/createVisitBody.ts
++++ b/lib/api-zod/src/generated/types/createVisitBody.ts
+@@ -14,4 +14,5 @@ export interface CreateVisitBody {
+   contactName?: string;
+   contactPhone?: string;
+   nextActionDate?: Date;
++  repId?: string;
+ }
+diff --git a/lib/api-zod/src/generated/types/event.ts b/lib/api-zod/src/generated/types/event.ts
+index 0d40b51..38744ea 100644
+--- a/lib/api-zod/src/generated/types/event.ts
++++ b/lib/api-zod/src/generated/types/event.ts
+@@ -10,11 +10,12 @@ import type { EventPayload } from "./eventPayload";
+ export interface Event {
+   id: number;
+   type: string;
+-  entityType?: string;
+-  entityId?: number;
+-  businessId?: number;
+-  visitId?: number;
+-  payload?: EventPayload;
++  entityType?: string | null;
++  entityId?: number | null;
++  businessId?: number | null;
++  visitId?: number | null;
++  payload?: EventPayload | null;
++  repId?: string | null;
+   source: string;
+   createdAt: Date;
+ }
+diff --git a/lib/api-zod/src/generated/types/listEventsParams.ts b/lib/api-zod/src/generated/types/listEventsParams.ts
+index 868a493..fe74b5a 100644
+--- a/lib/api-zod/src/generated/types/listEventsParams.ts
++++ b/lib/api-zod/src/generated/types/listEventsParams.ts
+@@ -15,5 +15,9 @@ export type ListEventsParams = {
+    * Filter by event type prefix (e.g. "visit.")
+    */
+   type?: string;
++  /**
++   * Scope the feed to a single rep (events with a matching rep_id)
++   */
++  repId?: string;
+   limit?: number;
+ };
+diff --git a/lib/db/src/schema/events.ts b/lib/db/src/schema/events.ts
+index 6f9e14c..58668a0 100644
+--- a/lib/db/src/schema/events.ts
++++ b/lib/db/src/schema/events.ts
+@@ -16,6 +16,10 @@ export const eventsTable = pgTable(
+     entityId: integer("entity_id"),
+     businessId: integer("business_id"),
+     visitId: integer("visit_id"),
++    /** Free-form rep identifier the event belongs to (until team auth lands).
++     * Mirrors the rep_id pattern on agent_suggestions/insights; lets Hermes
++     * scope the events feed (e.g. nearby_prospect anchor) to a single rep. */
++    repId: text("rep_id"),
+     /** Free-form context for the event (outcome, counts, etc.) */
+     payload: jsonb("payload"),
+     /** "server" for API-side logging, "client" for app-emitted events */
+@@ -26,6 +30,8 @@ export const eventsTable = pgTable(
+     index("events_created_at_idx").on(t.createdAt),
+     index("events_type_idx").on(t.type),
+     index("events_business_id_idx").on(t.businessId),
++    // Keeps the per-rep anchor lookup (rep_id + type=visit, newest first) cheap.
++    index("events_rep_type_created_idx").on(t.repId, t.type, t.createdAt),
+   ],
+ );
+ 
+diff --git a/lib/db/src/schema/visits.ts b/lib/db/src/schema/visits.ts
+index 9a25c45..a7abcdd 100644
+--- a/lib/db/src/schema/visits.ts
++++ b/lib/db/src/schema/visits.ts
+@@ -6,6 +6,8 @@ import { businessesTable } from "./businesses";
+ export const visitsTable = pgTable("visits", {
+   id: serial("id").primaryKey(),
+   businessId: integer("business_id").notNull().references(() => businessesTable.id, { onDelete: "cascade" }),
++  /** Free-form rep identifier until team auth lands; mirrors agent_suggestions. */
++  repId: text("rep_id"),
+   visitedAt: timestamp("visited_at", { withTimezone: true }).notNull().defaultNow(),
+   outcome: text("outcome").notNull().default("neutral"),
+   contactName: text("contact_name"),
+-- 
+2.34.1
+

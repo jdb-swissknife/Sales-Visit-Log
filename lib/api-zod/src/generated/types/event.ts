@@ -10,11 +10,12 @@ import type { EventPayload } from "./eventPayload";
 export interface Event {
   id: number;
   type: string;
-  entityType?: string;
-  entityId?: number;
-  businessId?: number;
-  visitId?: number;
-  payload?: EventPayload;
+  entityType?: string | null;
+  entityId?: number | null;
+  businessId?: number | null;
+  visitId?: number | null;
+  payload?: EventPayload | null;
+  repId?: string | null;
   source: string;
   createdAt: Date;
 }

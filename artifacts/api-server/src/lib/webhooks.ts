@@ -42,6 +42,7 @@ export interface WebhookEventData {
   entityId?: number | null;
   businessId?: number | null;
   visitId?: number | null;
+  repId?: string | null;
   payload?: Record<string, unknown> | null;
 }
 

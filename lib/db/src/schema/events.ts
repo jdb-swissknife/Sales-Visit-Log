@@ -16,6 +16,10 @@ export const eventsTable = pgTable(
     entityId: integer("entity_id"),
     businessId: integer("business_id"),
     visitId: integer("visit_id"),
+    /** Free-form rep identifier the event belongs to (until team auth lands).
+     * Mirrors the rep_id pattern on agent_suggestions/insights; lets Hermes
+     * scope the events feed (e.g. nearby_prospect anchor) to a single rep. */
+    repId: text("rep_id"),
     /** Free-form context for the event (outcome, counts, etc.) */
     payload: jsonb("payload"),
     /** "server" for API-side logging, "client" for app-emitted events */
@@ -26,6 +30,8 @@ export const eventsTable = pgTable(
     index("events_created_at_idx").on(t.createdAt),
     index("events_type_idx").on(t.type),
     index("events_business_id_idx").on(t.businessId),
+    // Keeps the per-rep anchor lookup (rep_id + type=visit, newest first) cheap.
+    index("events_rep_type_created_idx").on(t.repId, t.type, t.createdAt),
   ],
 );
 

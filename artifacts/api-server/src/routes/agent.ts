@@ -43,6 +43,10 @@ router.get("/agent/events", async (req, res): Promise<void> => {
   const conditions: SQL[] = [];
   if (query.data.since) conditions.push(gt(eventsTable.createdAt, new Date(query.data.since)));
   if (query.data.type) conditions.push(like(eventsTable.type, `${query.data.type}%`));
+  // Scope to a single rep when requested. NULL rep_id rows never match an
+  // explicit repId, so two reps' feeds stay isolated; omitting repId is
+  // unfiltered (back-compat with the pre-rep single-rep behavior).
+  if (query.data.repId) conditions.push(eq(eventsTable.repId, query.data.repId));
 
   const limit = Math.min(query.data.limit ?? 100, 500);
 

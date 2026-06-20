@@ -241,6 +241,7 @@ export const CreateVisitBody = zod.object({
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
   nextActionDate: zod.coerce.date().optional(),
+  repId: zod.string().optional(),
 });
 
 /**
@@ -532,17 +533,22 @@ export const ListEventsQueryParams = zod.object({
     .string()
     .optional()
     .describe('Filter by event type prefix (e.g. \"visit.\")'),
+  repId: zod.coerce
+    .string()
+    .optional()
+    .describe("Scope the feed to a single rep (events with a matching rep_id)"),
   limit: zod.coerce.number().optional(),
 });
 
 export const ListEventsResponseItem = zod.object({
   id: zod.number(),
   type: zod.string(),
-  entityType: zod.string().optional(),
-  entityId: zod.number().optional(),
-  businessId: zod.number().optional(),
-  visitId: zod.number().optional(),
-  payload: zod.record(zod.string(), zod.unknown()).optional(),
+  entityType: zod.string().nullable().optional(),
+  entityId: zod.number().nullable().optional(),
+  businessId: zod.number().nullable().optional(),
+  visitId: zod.number().nullable().optional(),
+  payload: zod.record(zod.string(), zod.unknown()).nullable().optional(),
+  repId: zod.string().nullable().optional(),
   source: zod.string(),
   createdAt: zod.coerce.date(),
 });

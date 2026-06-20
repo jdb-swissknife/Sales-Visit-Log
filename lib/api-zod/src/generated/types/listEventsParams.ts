@@ -15,5 +15,9 @@ export type ListEventsParams = {
    * Filter by event type prefix (e.g. "visit.")
    */
   type?: string;
+  /**
+   * Scope the feed to a single rep (events with a matching rep_id)
+   */
+  repId?: string;
   limit?: number;
 };

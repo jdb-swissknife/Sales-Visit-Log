@@ -91,6 +91,7 @@ router.post("/visits", async (req, res): Promise<void> => {
     entityId: visit.id,
     businessId: visit.businessId,
     visitId: visit.id,
+    repId: visit.repId,
     payload: { outcome: visit.outcome, businessName: business[0]?.name },
   });
 
@@ -195,6 +196,7 @@ router.put("/visits/:id", async (req, res): Promise<void> => {
     entityId: updated.id,
     businessId: updated.businessId,
     visitId: updated.id,
+    repId: updated.repId,
     payload: { outcome: updated.outcome },
   });
 
@@ -237,6 +239,7 @@ router.delete("/visits/:id", async (req, res): Promise<void> => {
     entityId: deleted.id,
     businessId: deleted.businessId,
     visitId: deleted.id,
+    repId: deleted.repId,
   });
   res.sendStatus(204);
 });
