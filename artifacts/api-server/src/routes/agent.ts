@@ -23,6 +23,7 @@ import { logEvent } from "../lib/events";
  *   GET   /api/agent/events             — activity feed (same filters as /api/events)
  *   GET   /api/agent/context            — businesses + upcoming callbacks snapshot
  *   POST  /api/agent/suggestions        — push a suggestion (dedupeKey ⇒ upsert)
+ *   POST  /api/agent/runs               — open a run (returns id); harness-created
  *   PATCH /api/agent/runs/:id           — report run lifecycle status
  *   POST  /api/agent/prospect-insights  — upsert insight by (businessId, type)
  *   POST  /api/agent/rep-insights       — upsert insight by (repId, type)
@@ -235,6 +236,45 @@ router.patch("/agent/runs/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(updated);
+});
+
+const CreateRunBody = z.object({
+  eventType: z.string().min(1).max(200),
+  eventId: z.string().min(1).max(200).optional(),
+  externalRunId: z.string().max(200).optional(),
+  correlationId: z.string().max(200).optional(),
+  status: z.enum(["queued", "running"]).optional(),
+});
+
+// Open a run for a scheduled/harness-driven behavior (no inbound webhook).
+// Event-triggered runs are still created by the webhook ingest; this is the
+// surface Hermes uses for its own schedule. Returns the new row (incl. id) so
+// the caller can report lifecycle via PATCH /agent/runs/:id.
+router.post("/agent/runs", async (req, res): Promise<void> => {
+  const body = CreateRunBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const now = new Date();
+  const status = body.data.status ?? "queued";
+  const eventId =
+    body.data.eventId ?? `agent-run:${body.data.eventType}:${now.toISOString()}`;
+
+  const [created] = await db
+    .insert(agentRunsTable)
+    .values({
+      eventId,
+      eventType: body.data.eventType,
+      externalRunId: body.data.externalRunId ?? null,
+      correlationId: body.data.correlationId ?? null,
+      status,
+      startedAt: status === "running" ? now : null,
+    })
+    .returning();
+
+  res.status(201).json(created);
 });
 
 // ---------------------------------------------------------------------------

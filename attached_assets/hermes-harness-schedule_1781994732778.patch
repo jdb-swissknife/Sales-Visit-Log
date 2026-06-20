@@ -1,0 +1,557 @@
+diff --git a/artifacts/api-server/src/routes/agent.ts b/artifacts/api-server/src/routes/agent.ts
+index f9e75de..e9bd261 100644
+--- a/artifacts/api-server/src/routes/agent.ts
++++ b/artifacts/api-server/src/routes/agent.ts
+@@ -23,6 +23,7 @@ import { logEvent } from "../lib/events";
+  *   GET   /api/agent/events             — activity feed (same filters as /api/events)
+  *   GET   /api/agent/context            — businesses + upcoming callbacks snapshot
+  *   POST  /api/agent/suggestions        — push a suggestion (dedupeKey ⇒ upsert)
++ *   POST  /api/agent/runs               — open a run (returns id); harness-created
+  *   PATCH /api/agent/runs/:id           — report run lifecycle status
+  *   POST  /api/agent/prospect-insights  — upsert insight by (businessId, type)
+  *   POST  /api/agent/rep-insights       — upsert insight by (repId, type)
+@@ -237,6 +238,45 @@ router.patch("/agent/runs/:id", async (req, res): Promise<void> => {
+   res.json(updated);
+ });
+ 
++const CreateRunBody = z.object({
++  eventType: z.string().min(1).max(200),
++  eventId: z.string().min(1).max(200).optional(),
++  externalRunId: z.string().max(200).optional(),
++  correlationId: z.string().max(200).optional(),
++  status: z.enum(["queued", "running"]).optional(),
++});
++
++// Open a run for a scheduled/harness-driven behavior (no inbound webhook).
++// Event-triggered runs are still created by the webhook ingest; this is the
++// surface Hermes uses for its own schedule. Returns the new row (incl. id) so
++// the caller can report lifecycle via PATCH /agent/runs/:id.
++router.post("/agent/runs", async (req, res): Promise<void> => {
++  const body = CreateRunBody.safeParse(req.body);
++  if (!body.success) {
++    res.status(400).json({ error: body.error.message });
++    return;
++  }
++
++  const now = new Date();
++  const status = body.data.status ?? "queued";
++  const eventId =
++    body.data.eventId ?? `agent-run:${body.data.eventType}:${now.toISOString()}`;
++
++  const [created] = await db
++    .insert(agentRunsTable)
++    .values({
++      eventId,
++      eventType: body.data.eventType,
++      externalRunId: body.data.externalRunId ?? null,
++      correlationId: body.data.correlationId ?? null,
++      status,
++      startedAt: status === "running" ? now : null,
++    })
++    .returning();
++
++  res.status(201).json(created);
++});
++
+ // ---------------------------------------------------------------------------
+ // Insights (advisory persistence; upserts are idempotent)
+ // ---------------------------------------------------------------------------
+diff --git a/artifacts/api-server/tests/agent-runs-create.test.ts b/artifacts/api-server/tests/agent-runs-create.test.ts
+new file mode 100644
+index 0000000..9689cd6
+--- /dev/null
++++ b/artifacts/api-server/tests/agent-runs-create.test.ts
+@@ -0,0 +1,91 @@
++/**
++ * POST /api/agent/runs — the harness-facing surface that opens a tracked run
++ * for a scheduled behavior (no inbound webhook). DB-gated like the other agent
++ * tests: only runs when DATABASE_URL is configured.
++ */
++import assert from "node:assert/strict";
++import type { AddressInfo } from "node:net";
++import type { Server } from "node:http";
++import { after, before, describe, it } from "node:test";
++
++type DbModule = typeof import("@workspace/db");
++
++const d = process.env.DATABASE_URL ? describe : describe.skip;
++
++d("POST /api/agent/runs — open a run", () => {
++  let dbm: DbModule;
++  let server: Server;
++  let baseUrl = "";
++  const KEY = "test-agent-key";
++
++  const post = async (body: unknown, auth = true) => {
++    const res = await fetch(`${baseUrl}/api/agent/runs`, {
++      method: "POST",
++      headers: {
++        "content-type": "application/json",
++        ...(auth ? { authorization: `Bearer ${KEY}` } : {}),
++      },
++      body: JSON.stringify(body),
++    });
++    let json: any = null;
++    try { json = await res.json(); } catch { /* no body */ }
++    return { status: res.status, body: json };
++  };
++
++  before(async () => {
++    process.env.AGENT_API_KEY = KEY;
++    process.env.HERMES_WEBHOOK_URL = "";
++    const appMod = await import("../src/app");
++    dbm = await import("@workspace/db");
++    server = appMod.default.listen(0);
++    await new Promise<void>((r) => server.once("listening", r));
++    const { port } = server.address() as AddressInfo;
++    baseUrl = `http://127.0.0.1:${port}`;
++  });
++
++  after(async () => {
++    await new Promise<void>((r) => server.close(() => r()));
++  });
++
++  it("401s without the agent key", async () => {
++    const { status } = await post({ eventType: "nearby_prospect.scheduled" }, false);
++    assert.equal(status, 401);
++  });
++
++  it("creates a queued run and returns its id (eventId auto-generated)", async () => {
++    const { status, body } = await post({ eventType: "nearby_prospect.scheduled" });
++    assert.equal(status, 201);
++    assert.ok(Number.isInteger(body.id), "expected a numeric run id");
++    assert.equal(body.status, "queued");
++    assert.equal(body.eventType, "nearby_prospect.scheduled");
++    assert.ok(typeof body.eventId === "string" && body.eventId.length > 0);
++    assert.equal(body.startedAt, null);
++
++    // The row is real: PATCH it and confirm it transitions.
++    const patch = await fetch(`${baseUrl}/api/agent/runs/${body.id}`, {
++      method: "PATCH",
++      headers: { "content-type": "application/json", authorization: `Bearer ${KEY}` },
++      body: JSON.stringify({ status: "completed", output: { posted: 0 } }),
++    });
++    assert.equal(patch.status, 200);
++    const patched = (await patch.json()) as any;
++    assert.equal(patched.status, "completed");
++    assert.ok(patched.finishedAt);
++  });
++
++  it("honors status=running by stamping startedAt", async () => {
++    const { status, body } = await post({
++      eventType: "nearby_prospect.scheduled",
++      eventId: `test-run:${Date.now()}`,
++      status: "running",
++    });
++    assert.equal(status, 201);
++    assert.equal(body.status, "running");
++    assert.ok(body.startedAt, "running run must stamp startedAt");
++  });
++
++  it("400s on a missing eventType", async () => {
++    const { status } = await post({ eventId: "no-type" });
++    assert.equal(status, 400);
++  });
++});
+diff --git a/artifacts/hermes-agent/package.json b/artifacts/hermes-agent/package.json
+index 6f28e5d..bd2fb3c 100644
+--- a/artifacts/hermes-agent/package.json
++++ b/artifacts/hermes-agent/package.json
+@@ -9,7 +9,8 @@
+   "scripts": {
+     "run-nearby": "tsx src/run-nearby.ts",
+     "test": "tsx --test tests/*.test.ts",
+-    "typecheck": "tsc -p tsconfig.json --noEmit"
++    "typecheck": "tsc -p tsconfig.json --noEmit",
++    "run-harness": "tsx src/run-harness.ts"
+   },
+   "devDependencies": {
+     "@types/node": "catalog:",
+diff --git a/artifacts/hermes-agent/src/client.ts b/artifacts/hermes-agent/src/client.ts
+index 3025928..51c1698 100644
+--- a/artifacts/hermes-agent/src/client.ts
++++ b/artifacts/hermes-agent/src/client.ts
+@@ -71,6 +71,21 @@ export class HermesClient {
+     return this.req<{ id: number }>("POST", "/api/agent/suggestions", body);
+   }
+ 
++  /**
++   * Open a new agent run (POST /agent/runs) and return its id. Used by the
++   * harness to create a tracked run before invoking a behavior, which then
++   * walks the run's lifecycle via patchRun.
++   */
++  async createRun(body: {
++    eventType: string;
++    eventId?: string;
++    externalRunId?: string;
++    correlationId?: string;
++    status?: "queued" | "running";
++  }): Promise<{ id: number }> {
++    return this.req<{ id: number }>("POST", "/api/agent/runs", body);
++  }
++
+   patchRun(
+     id: number,
+     body: { status: RunStatus; output?: unknown; error?: string },
+diff --git a/artifacts/hermes-agent/src/harness.ts b/artifacts/hermes-agent/src/harness.ts
+new file mode 100644
+index 0000000..66e907e
+--- /dev/null
++++ b/artifacts/hermes-agent/src/harness.ts
+@@ -0,0 +1,109 @@
++/**
++ * Multi-rep scheduling harness for Hermes behaviors.
++ *
++ * The harness is the layer that turns a single-rep behavior (runNearbyProspect)
++ * into the team-wide, scheduled job that actually exercises the rep-scoped feed.
++ * It is deliberately a one-shot: it runs every active rep once and returns. An
++ * external scheduler (cron) invokes it on a cadence; the behavior's own drop-in
++ * time gate and per-day dedupeKey make frequent invocation safe (no stacking).
++ *
++ * Per-rep location is NOT passed in: runNearbyProspect derives each rep's anchor
++ * from that rep's most recent visit via GET /agent/events?repId=, so two reps
++ * run together get independent anchors as long as the server scopes the feed by
++ * repId (which it now does).
++ *
++ * Run tracking: for each rep the harness opens a tracked run (POST /agent/runs)
++ * and hands the id to runNearbyProspect, which walks the lifecycle
++ * (running -> completed/skipped/failed) via PATCH /agent/runs/:id.
++ */
++import type { HermesClient } from "./client";
++import { runNearbyProspect, type RunNearbyResult } from "./nearby-prospect";
++import type { NearbyConfig } from "./proximity";
++
++export interface HarnessOptions {
++  client: HermesClient;
++  /** Active reps to run this tick. */
++  repIds: string[];
++  /** Defaults to now; injectable for deterministic runs/tests. */
++  now?: Date;
++  config?: Partial<NearbyConfig>;
++  /**
++   * When false (default), the harness opens a tracked agent_run per rep via
++   * POST /agent/runs and reports its lifecycle. Set true to skip run tracking
++   * (suggestions still post; no agent_runs row is created).
++   */
++  skipRunTracking?: boolean;
++}
++
++export interface HarnessRepOutcome {
++  repId: string;
++  /** Tracked run id, when run tracking is on and run creation succeeded. */
++  agentRunId?: number;
++  result?: RunNearbyResult;
++  /** Set when this rep's run threw; other reps are unaffected. */
++  error?: string;
++}
++
++export interface HarnessResult {
++  ranAt: string;
++  reps: HarnessRepOutcome[];
++  totalPosted: number;
++}
++
++/**
++ * Run the nearby_prospect behavior once for every active rep. Per-rep failures
++ * are isolated: one rep throwing never aborts the others, and the harness itself
++ * does not throw for a field error — it records it on that rep's outcome.
++ */
++export async function runHarness(opts: HarnessOptions): Promise<HarnessResult> {
++  const now = opts.now ?? new Date();
++  const reps: HarnessRepOutcome[] = [];
++  let totalPosted = 0;
++
++  for (const repId of opts.repIds) {
++    const outcome: HarnessRepOutcome = { repId };
++    try {
++      let agentRunId: number | undefined;
++      if (!opts.skipRunTracking) {
++        // Run creation is part of the rep's run; if it fails, fall back to an
++        // untracked run rather than dropping the rep entirely.
++        try {
++          const created = await opts.client.createRun({
++            eventType: "nearby_prospect.scheduled",
++            eventId: `hermes:nearby:${repId}:${now.toISOString()}`,
++          });
++          agentRunId = created.id;
++          outcome.agentRunId = agentRunId;
++        } catch (err) {
++          outcome.error = `createRun failed: ${
++            err instanceof Error ? err.message : String(err)
++          }`;
++        }
++      }
++
++      const result = await runNearbyProspect({
++        client: opts.client,
++        repId,
++        now,
++        config: opts.config,
++        agentRunId,
++      });
++      outcome.result = result;
++      totalPosted += result.posted;
++    } catch (err) {
++      outcome.error = err instanceof Error ? err.message : String(err);
++    }
++    reps.push(outcome);
++  }
++
++  return { ranAt: now.toISOString(), reps, totalPosted };
++}
++
++/** Parse a comma/whitespace-separated rep-id list (e.g. from an env var). */
++export function parseRepIds(raw: string | undefined): string[] {
++  if (!raw) return [];
++  return raw
++    .split(/[,\s]+/)
++    .map((s) => s.trim())
++    .filter((s) => s.length > 0);
++}
+diff --git a/artifacts/hermes-agent/src/index.ts b/artifacts/hermes-agent/src/index.ts
+index cc8cf9b..e5c782a 100644
+--- a/artifacts/hermes-agent/src/index.ts
++++ b/artifacts/hermes-agent/src/index.ts
+@@ -2,3 +2,4 @@ export * from "./types";
+ export * from "./proximity";
+ export * from "./client";
+ export * from "./nearby-prospect";
++export * from "./harness";
+diff --git a/artifacts/hermes-agent/src/run-harness.ts b/artifacts/hermes-agent/src/run-harness.ts
+new file mode 100644
+index 0000000..6dfe51f
+--- /dev/null
++++ b/artifacts/hermes-agent/src/run-harness.ts
+@@ -0,0 +1,34 @@
++/**
++ * One-shot CLI: run the nearby_prospect harness once for every active rep.
++ * Intended to be invoked on a schedule by an external cron.
++ *
++ *   HERMES_BASE_URL=http://localhost:8080 \
++ *   AGENT_API_KEY=... HERMES_REP_IDS=rep-7,rep-9 \
++ *   pnpm --filter @workspace/hermes-agent run-harness
++ *
++ * Rep list source is config for now (HERMES_REP_IDS). Once team auth lands the
++ * intended source is a GET /api/agent/reps context endpoint; see APPLY notes.
++ */
++import { HermesClient } from "./client";
++import { runHarness, parseRepIds } from "./harness";
++
++async function main(): Promise<void> {
++  const baseUrl =
++    process.env.HERMES_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:8080";
++  const apiKey = process.env.AGENT_API_KEY;
++  if (!apiKey) throw new Error("AGENT_API_KEY is required");
++
++  const repIds = parseRepIds(process.env.HERMES_REP_IDS);
++  if (repIds.length === 0) {
++    throw new Error("HERMES_REP_IDS is required (comma-separated rep ids)");
++  }
++
++  const client = new HermesClient({ baseUrl, apiKey });
++  const result = await runHarness({ client, repIds });
++  console.log(JSON.stringify(result, null, 2));
++}
++
++main().catch((err) => {
++  console.error(err instanceof Error ? err.message : err);
++  process.exit(1);
++});
+diff --git a/artifacts/hermes-agent/tests/harness.test.ts b/artifacts/hermes-agent/tests/harness.test.ts
+new file mode 100644
+index 0000000..15a265e
+--- /dev/null
++++ b/artifacts/hermes-agent/tests/harness.test.ts
+@@ -0,0 +1,192 @@
++/**
++ * Harness tests. We drive a real HermesClient with an injected, repId-aware
++ * fetch so the multi-rep loop, per-rep run tracking, and the rep-scoped anchor
++ * are exercised end-to-end without a network. The headline case: two reps run
++ * in one tick must get INDEPENDENT anchors (each from its own most-recent visit)
++ * even though GET /agent/context is global.
++ */
++import assert from "node:assert/strict";
++import { describe, it } from "node:test";
++import { HermesClient } from "../src/client";
++import { runHarness, parseRepIds } from "../src/harness";
++import type { BusinessCtx } from "../src/types";
++
++const NOON_CHICAGO = new Date("2026-06-19T17:00:00Z");
++
++function biz(p: Partial<BusinessCtx> & { id: number }): BusinessCtx {
++  return {
++    id: p.id,
++    name: p.name ?? `Biz ${p.id}`,
++    address: p.address ?? null,
++    sector: p.sector ?? "retail",
++    status: p.status ?? "not_contacted",
++    priority: p.priority ?? "medium",
++    latitude: p.latitude ?? null,
++    longitude: p.longitude ?? null,
++  };
++}
++
++interface Captured {
++  method: string;
++  path: string;
++  query: URLSearchParams;
++  body: any;
++}
++
++// Two clusters ~124 mi apart so an anchor only ever matches its own neighbor.
++const BUSINESSES: BusinessCtx[] = [
++  biz({ id: 1, name: "Anchor A", latitude: 41.8, longitude: -87.6, status: "prospect", priority: "high" }),
++  biz({ id: 2, name: "Nearby A", latitude: 41.804, longitude: -87.6, status: "not_contacted" }),
++  biz({ id: 10, name: "Anchor B", latitude: 40.0, longitude: -88.0, status: "prospect", priority: "high" }),
++  biz({ id: 11, name: "Nearby B", latitude: 40.004, longitude: -88.0, status: "not_contacted" }),
++];
++
++// repId -> businessId of that rep's most-recent visit (the anchor source).
++const ANCHOR_BY_REP: Record<string, number> = { "rep-A": 1, "rep-B": 10 };
++
++function makeFetch(opts: {
++  captured: Captured[];
++  /** Return true to fail a given (repId, method, path). repId may be "". */
++  failOn?: (repId: string, method: string, path: string) => boolean;
++  runIdCounter?: { n: number };
++}): typeof fetch {
++  const counter = opts.runIdCounter ?? { n: 0 };
++  return (async (url: string | URL, init?: RequestInit) => {
++    const u = new URL(String(url));
++    const method = init?.method ?? "GET";
++    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
++    const repId = u.searchParams.get("repId") ?? body?.repId ?? "";
++    opts.captured.push({ method, path: u.pathname, query: u.searchParams, body });
++
++    if (opts.failOn?.(repId, method, u.pathname)) {
++      return new Response("boom", { status: 500 });
++    }
++
++    let payload: unknown = {};
++    if (u.pathname === "/api/agent/events") {
++      const r = u.searchParams.get("repId") ?? "";
++      const anchorId = ANCHOR_BY_REP[r];
++      payload = anchorId ? [{ id: 99, type: "visit.created", businessId: anchorId, source: "server", createdAt: NOON_CHICAGO.toISOString() }] : [];
++    } else if (u.pathname === "/api/agent/context") {
++      payload = { businesses: BUSINESSES, upcomingCallbacks: [], generatedAt: NOON_CHICAGO.toISOString() };
++    } else if (u.pathname === "/api/agent/runs") {
++      payload = { id: ++counter.n }; // POST create-run
++    } else if (u.pathname === "/api/agent/suggestions") {
++      payload = { id: 1 };
++    } else if (u.pathname.startsWith("/api/agent/runs/")) {
++      payload = {}; // PATCH lifecycle
++    }
++
++    return new Response(JSON.stringify(payload), {
++      status: 200,
++      headers: { "content-type": "application/json" },
++    });
++  }) as unknown as typeof fetch;
++}
++
++function client(fetchImpl: typeof fetch): HermesClient {
++  return new HermesClient({ baseUrl: "http://test", apiKey: "k", fetchImpl });
++}
++
++describe("parseRepIds", () => {
++  it("splits on commas and whitespace, trims, drops empties", () => {
++    assert.deepEqual(parseRepIds("rep-7, rep-9 ,, rep-3"), ["rep-7", "rep-9", "rep-3"]);
++    assert.deepEqual(parseRepIds("  rep-1\n rep-2 "), ["rep-1", "rep-2"]);
++    assert.deepEqual(parseRepIds(undefined), []);
++    assert.deepEqual(parseRepIds(""), []);
++  });
++});
++
++describe("runHarness", () => {
++  it("gives two reps independent anchors in one tick", async () => {
++    const captured: Captured[] = [];
++    const res = await runHarness({
++      client: client(makeFetch({ captured })),
++      repIds: ["rep-A", "rep-B"],
++      now: NOON_CHICAGO,
++    });
++
++    assert.equal(res.reps.length, 2);
++    const a = res.reps.find((r) => r.repId === "rep-A")!;
++    const b = res.reps.find((r) => r.repId === "rep-B")!;
++
++    // Each rep anchors to ITS OWN most-recent visit, not the other's.
++    assert.equal(a.result?.anchorBusinessId, 1);
++    assert.equal(b.result?.anchorBusinessId, 10);
++
++    // And only matches its own neighbor (proves anchors didn't bleed across).
++    assert.deepEqual(a.result?.cards.map((c) => c.businessId), [2]);
++    assert.deepEqual(b.result?.cards.map((c) => c.businessId), [11]);
++    assert.equal(res.totalPosted, 2);
++
++    // Each rep's events fetch was scoped by its own repId.
++    const eventReps = captured
++      .filter((c) => c.path === "/api/agent/events")
++      .map((c) => c.query.get("repId"));
++    assert.deepEqual(eventReps.sort(), ["rep-A", "rep-B"]);
++  });
++
++  it("opens a tracked run per rep and threads its id through suggestion + lifecycle", async () => {
++    const captured: Captured[] = [];
++    await runHarness({
++      client: client(makeFetch({ captured })),
++      repIds: ["rep-A", "rep-B"],
++      now: NOON_CHICAGO,
++    });
++
++    // One create-run POST per rep.
++    const creates = captured.filter((c) => c.method === "POST" && c.path === "/api/agent/runs");
++    assert.equal(creates.length, 2);
++    assert.equal(creates[0].body.eventType, "nearby_prospect.scheduled");
++
++    // Each rep's suggestion carries the run id it was given, and that run is
++    // PATCHed to completed.
++    const suggestions = captured.filter((c) => c.path === "/api/agent/suggestions");
++    assert.equal(suggestions.length, 2);
++    for (const s of suggestions) assert.ok(typeof s.body.agentRunId === "number");
++
++    const patched = captured
++      .filter((c) => c.method === "PATCH" && c.path.startsWith("/api/agent/runs/"))
++      .map((c) => c.body.status);
++    // running + completed for each of the two runs.
++    assert.equal(patched.filter((x) => x === "running").length, 2);
++    assert.equal(patched.filter((x) => x === "completed").length, 2);
++  });
++
++  it("skips run tracking when asked (no create-run POST)", async () => {
++    const captured: Captured[] = [];
++    const res = await runHarness({
++      client: client(makeFetch({ captured })),
++      repIds: ["rep-A"],
++      now: NOON_CHICAGO,
++      skipRunTracking: true,
++    });
++    assert.equal(captured.filter((c) => c.method === "POST" && c.path === "/api/agent/runs").length, 0);
++    assert.equal(res.reps[0].agentRunId, undefined);
++    assert.equal(res.reps[0].result?.posted, 1);
++  });
++
++  it("isolates a per-rep failure: one rep throws, the other still runs", async () => {
++    const captured: Captured[] = [];
++    const res = await runHarness({
++      client: client(
++        makeFetch({
++          captured,
++          // Fail rep-A's events read; rep-B is untouched.
++          failOn: (repId, method, path) =>
++            path === "/api/agent/events" && repId === "rep-A",
++        }),
++      ),
++      repIds: ["rep-A", "rep-B"],
++      now: NOON_CHICAGO,
++    });
++
++    const a = res.reps.find((r) => r.repId === "rep-A")!;
++    const b = res.reps.find((r) => r.repId === "rep-B")!;
++    assert.ok(a.error, "rep-A should record an error");
++    assert.equal(a.result, undefined);
++    assert.equal(b.result?.anchorBusinessId, 10);
++    assert.equal(b.result?.cards.length, 1);
++    assert.equal(res.totalPosted, 1);
++  });
++});

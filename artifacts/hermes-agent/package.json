@@ -9,7 +9,8 @@
   "scripts": {
     "run-nearby": "tsx src/run-nearby.ts",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "run-harness": "tsx src/run-harness.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

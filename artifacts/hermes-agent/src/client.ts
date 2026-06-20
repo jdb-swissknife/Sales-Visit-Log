@@ -71,6 +71,21 @@ export class HermesClient {
     return this.req<{ id: number }>("POST", "/api/agent/suggestions", body);
   }
 
+  /**
+   * Open a new agent run (POST /agent/runs) and return its id. Used by the
+   * harness to create a tracked run before invoking a behavior, which then
+   * walks the run's lifecycle via patchRun.
+   */
+  async createRun(body: {
+    eventType: string;
+    eventId?: string;
+    externalRunId?: string;
+    correlationId?: string;
+    status?: "queued" | "running";
+  }): Promise<{ id: number }> {
+    return this.req<{ id: number }>("POST", "/api/agent/runs", body);
+  }
+
   patchRun(
     id: number,
     body: { status: RunStatus; output?: unknown; error?: string },
