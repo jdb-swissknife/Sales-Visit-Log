@@ -10,7 +10,8 @@
     "run-nearby": "tsx src/run-nearby.ts",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "run-harness": "tsx src/run-harness.ts"
+    "run-harness": "tsx src/run-harness.ts",
+    "run-debrief": "tsx src/run-debrief.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

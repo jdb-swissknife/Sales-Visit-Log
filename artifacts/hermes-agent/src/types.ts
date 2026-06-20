@@ -30,25 +30,41 @@ export interface EventItem {
   entityId?: number;
   businessId?: number;
   visitId?: number;
-  payload?: Record<string, unknown>;
+  repId?: string | null;
+  payload?: Record<string, unknown> | null;
   source: string;
   createdAt: string;
 }
 
 export type SuggestionPriority = "low" | "normal" | "high" | "urgent";
 
+/** Card types the server accepts (see api-server suggestions route enum). */
+export type SuggestionType =
+  | "callback_reminder"
+  | "nearby_prospect"
+  | "coaching"
+  | "debrief"
+  | "other";
+
+/**
+ * A suggestion card payload. `type`-specific behaviors fill the optional fields
+ * they need: nearby_prospect always sets businessId/actionUrl/priorityScore;
+ * debrief is rep-level and omits them. Only the fields common to every card are
+ * required here.
+ */
 export interface SuggestionPayload {
-  type: "nearby_prospect";
+  type: SuggestionType;
   title: string;
   body: string;
   priority: SuggestionPriority;
-  businessId: number;
-  repId?: string;
-  priorityScore: number;
   dedupeKey: string;
-  actionLabel: string;
-  actionUrl: string;
   expiresAt: string;
-  agentRunId?: number;
+  /** Every card carries a (possibly empty) free-form context bag. */
   data: Record<string, unknown>;
+  businessId?: number;
+  repId?: string;
+  priorityScore?: number;
+  actionLabel?: string;
+  actionUrl?: string;
+  agentRunId?: number;
 }

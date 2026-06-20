@@ -1,0 +1,859 @@
+diff --git a/artifacts/hermes-agent/package.json b/artifacts/hermes-agent/package.json
+index bd2fb3c..a816707 100644
+--- a/artifacts/hermes-agent/package.json
++++ b/artifacts/hermes-agent/package.json
+@@ -10,7 +10,8 @@
+     "run-nearby": "tsx src/run-nearby.ts",
+     "test": "tsx --test tests/*.test.ts",
+     "typecheck": "tsc -p tsconfig.json --noEmit",
+-    "run-harness": "tsx src/run-harness.ts"
++    "run-harness": "tsx src/run-harness.ts",
++    "run-debrief": "tsx src/run-debrief.ts"
+   },
+   "devDependencies": {
+     "@types/node": "catalog:",
+diff --git a/artifacts/hermes-agent/src/debrief.ts b/artifacts/hermes-agent/src/debrief.ts
+new file mode 100644
+index 0000000..9a10ed2
+--- /dev/null
++++ b/artifacts/hermes-agent/src/debrief.ts
+@@ -0,0 +1,388 @@
++/**
++ * debrief behavior: at day's end, post one rep-level card summarizing the day
++ * and naming 2-3 focused priorities for tomorrow.
++ *
++ * Trigger is the rep's most-recent `day.ended` event (read from the rep-scoped
++ * feed); its `payload` is the app's free-form `daySummary`. Because the summary
++ * is free-form, parsing is deliberately tolerant: we pull a small set of
++ * well-known keys (with synonyms) and ground the card only in what we actually
++ * find — no invented numbers, no invented follow-ups.
++ *
++ * Shape mirrors nearby-prospect.ts: a pure builder (buildDebrief) with no I/O or
++ * hidden clock, wrapped by an I/O shell (runDebrief) that owns run lifecycle so
++ * a thrown I/O error still marks the run failed.
++ */
++import type { HermesClient, RunStatus } from "./client";
++import { localDateInZone, zoneOffsetMinutes } from "./proximity";
++import type { SuggestionPayload } from "./types";
++
++export interface DebriefConfig {
++  /** IANA zone the rep's local day/date is evaluated in. */
++  timeZone: string;
++  /** Max priorities listed on the card. */
++  maxPriorities: number;
++  /**
++   * Ignore a day.ended event older than this many hours. Guards against
++   * debriefing a long-past day when the scheduler runs and the rep has not
++   * ended a day since. Dedupe already prevents same-day stacking.
++   */
++  maxStaleHours: number;
++}
++
++export const DEFAULT_DEBRIEF_CONFIG: DebriefConfig = {
++  timeZone: "America/Chicago",
++  maxPriorities: 3,
++  maxStaleHours: 36,
++};
++
++export type DebriefSkipReason =
++  | "no_day_ended"
++  | "stale_day_ended"
++  | "empty_day_summary";
++
++export interface RunDebriefOptions {
++  client: HermesClient;
++  repId?: string;
++  /** Defaults to now; injectable for deterministic runs/tests. */
++  now?: Date;
++  config?: Partial<DebriefConfig>;
++  /** When set, the run reports its lifecycle to PATCH /agent/runs/:id. */
++  agentRunId?: number;
++}
++
++export interface RunDebriefResult {
++  posted: number;
++  skipped?: DebriefSkipReason;
++  date?: string;
++  dedupeKey?: string;
++}
++
++// ---------------------------------------------------------------------------
++// Tolerant daySummary parsing (pure)
++// ---------------------------------------------------------------------------
++
++interface ParsedSummary {
++  visits?: number;
++  closes?: number;
++  newProspects?: number;
++  callbacks?: number;
++  outcomes?: Record<string, number>;
++  priorities: string[];
++  date?: string; // YYYY-MM-DD, only when the summary supplied a usable one
++}
++
++function asRecord(v: unknown): Record<string, unknown> | undefined {
++  return v && typeof v === "object" && !Array.isArray(v)
++    ? (v as Record<string, unknown>)
++    : undefined;
++}
++
++/** First finite number found across the given keys. */
++function pickNum(
++  obj: Record<string, unknown>,
++  keys: string[],
++): number | undefined {
++  for (const k of keys) {
++    const v = obj[k];
++    if (typeof v === "number" && Number.isFinite(v)) return v;
++  }
++  return undefined;
++}
++
++/** First string[] found across the keys; non-string entries are dropped. */
++function pickStrList(
++  obj: Record<string, unknown>,
++  keys: string[],
++): string[] | undefined {
++  for (const k of keys) {
++    const v = obj[k];
++    if (Array.isArray(v)) {
++      const list = v
++        .filter((x): x is string => typeof x === "string")
++        .map((s) => s.trim())
++        .filter((s) => s.length > 0);
++      if (list.length > 0) return list;
++    }
++  }
++  return undefined;
++}
++
++/** A record of name->count (drops non-numeric / non-positive entries). */
++function pickNumMap(
++  obj: Record<string, unknown>,
++  keys: string[],
++): Record<string, number> | undefined {
++  for (const k of keys) {
++    const rec = asRecord(obj[k]);
++    if (!rec) continue;
++    const out: Record<string, number> = {};
++    for (const [name, val] of Object.entries(rec)) {
++      if (typeof val === "number" && Number.isFinite(val) && val > 0) {
++        out[name] = val;
++      }
++    }
++    if (Object.keys(out).length > 0) return out;
++  }
++  return undefined;
++}
++
++const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
++
++function pickDate(obj: Record<string, unknown>): string | undefined {
++  for (const k of ["date", "dateLocal", "day", "localDate"]) {
++    const v = obj[k];
++    if (typeof v === "string" && DATE_RE.test(v)) return v.slice(0, 10);
++  }
++  return undefined;
++}
++
++export function parseDaySummary(
++  summary: Record<string, unknown> | null | undefined,
++): ParsedSummary {
++  if (!summary) return { priorities: [] };
++  return {
++    visits: pickNum(summary, ["visits", "visitsCount", "totalVisits"]),
++    closes: pickNum(summary, ["closes", "closed", "wins", "dealsClosed"]),
++    newProspects: pickNum(summary, ["newProspects", "prospectsAdded"]),
++    callbacks: pickNum(summary, [
++      "callbacks",
++      "callbacksScheduled",
++      "callbacksSet",
++    ]),
++    outcomes: pickNumMap(summary, ["outcomes", "outcomeCounts", "byOutcome"]),
++    priorities:
++      pickStrList(summary, [
++        "priorities",
++        "tomorrow",
++        "tomorrowPriorities",
++        "nextActions",
++        "followUps",
++        "focus",
++      ]) ?? [],
++    date: pickDate(summary),
++  };
++}
++
++// ---------------------------------------------------------------------------
++// Card construction (pure)
++// ---------------------------------------------------------------------------
++
++function plural(n: number, one: string, many = `${one}s`): string {
++  return `${n} ${n === 1 ? one : many}`;
++}
++
++function humanizeOutcome(s: string): string {
++  return s.replace(/[_-]+/g, " ").trim();
++}
++
++/** Grounded one-line recap built only from counts/outcomes present. */
++function buildRecap(p: ParsedSummary): string {
++  const parts: string[] = [];
++  if (p.visits != null) parts.push(plural(p.visits, "visit"));
++  if (p.closes != null) parts.push(plural(p.closes, "close"));
++  if (p.newProspects != null)
++    parts.push(plural(p.newProspects, "new prospect"));
++  if (p.callbacks != null) parts.push(`${plural(p.callbacks, "callback")} set`);
++  if (parts.length > 0) return parts.join(", ");
++
++  if (p.outcomes) {
++    const top = Object.entries(p.outcomes)
++      .sort((a, b) => b[1] - a[1])
++      .slice(0, 3)
++      .map(([name, n]) => `${humanizeOutcome(name)} ×${n}`);
++    if (top.length > 0) return top.join(", ");
++  }
++  return "";
++}
++
++/**
++ * Priorities for tomorrow. Prefer the summary's explicit list; otherwise derive
++ * only from concrete signals (interested prospects, scheduled callbacks). Never
++ * invents a named action.
++ */
++function buildPriorities(p: ParsedSummary, max: number): string[] {
++  if (p.priorities.length > 0) return p.priorities.slice(0, max);
++
++  const derived: string[] = [];
++  const interested = p.outcomes?.interested ?? p.outcomes?.Interested;
++  if (typeof interested === "number" && interested > 0) {
++    derived.push(
++      `Follow up with ${plural(interested, "interested prospect")} from today.`,
++    );
++  }
++  if (p.callbacks != null && p.callbacks > 0) {
++    derived.push(
++      `${plural(p.callbacks, "callback")} lined up — plan your route.`,
++    );
++  }
++  return derived.slice(0, max);
++}
++
++const TITLE_MAX = 200;
++const BODY_MAX = 5000;
++
++function truncate(s: string, max: number): string {
++  return s.length <= max ? s : `${s.slice(0, max - 1)}…`;
++}
++
++/**
++ * Build the debrief card, or null when the summary carries nothing worth a card
++ * (no recap signal and no priorities) — the caller treats null as a skip.
++ */
++export function buildDebrief(opts: {
++  repId?: string;
++  daySummary: Record<string, unknown> | null | undefined;
++  /** When the day.ended event occurred (date fallback). */
++  occurredAt: Date;
++  now: Date;
++  cfg: DebriefConfig;
++  agentRunId?: number;
++}): SuggestionPayload | null {
++  const parsed = parseDaySummary(opts.daySummary);
++  const recap = buildRecap(parsed);
++  const priorities = buildPriorities(parsed, opts.cfg.maxPriorities);
++
++  if (recap === "" && priorities.length === 0) return null;
++
++  const date = parsed.date ?? localDateInZone(opts.occurredAt, opts.cfg.timeZone);
++
++  const title = truncate(
++    recap ? `Day wrap: ${recap}` : `Day wrap — ${date}`,
++    TITLE_MAX,
++  );
++
++  const lines: string[] = [];
++  lines.push(recap ? `Today: ${recap}.` : "Here's your day wrap.");
++  if (priorities.length > 0) {
++    lines.push("");
++    lines.push("Tomorrow's focus:");
++    for (const pr of priorities) lines.push(`- ${pr}`);
++  }
++  const body = truncate(lines.join("\n"), BODY_MAX);
++
++  const data: Record<string, unknown> = { date, priorities };
++  if (parsed.visits != null) data.visits = parsed.visits;
++  if (parsed.closes != null) data.closes = parsed.closes;
++  if (parsed.newProspects != null) data.newProspects = parsed.newProspects;
++  if (parsed.callbacks != null) data.callbacks = parsed.callbacks;
++  if (parsed.outcomes) data.outcomes = parsed.outcomes;
++
++  return {
++    type: "debrief",
++    title,
++    body,
++    priority: "normal",
++    repId: opts.repId,
++    dedupeKey: `hermes:debrief:${opts.repId ?? "rep"}:${date}`,
++    expiresAt: endOfNextDayIso(opts.now, opts.cfg.timeZone),
++    agentRunId: opts.agentRunId,
++    data,
++  };
++}
++
++/**
++ * ISO timestamp (with offset) for the end of the *next* local day in `tz`.
++ * Uses the zone offset at `now`; the sub-second/DST drift is immaterial for an
++ * expiry boundary (matches the approximation in proximity.endOfWindowIso).
++ */
++export function endOfNextDayIso(now: Date, tz: string): string {
++  const today = localDateInZone(now, tz); // YYYY-MM-DD
++  const [y, m, d] = today.split("-").map(Number);
++  const next = new Date(Date.UTC(y, m - 1, d + 1)); // rolls month/year over
++  const ny = next.getUTCFullYear();
++  const nm = String(next.getUTCMonth() + 1).padStart(2, "0");
++  const nd = String(next.getUTCDate()).padStart(2, "0");
++  const offsetMin = zoneOffsetMinutes(now, tz);
++  const sign = offsetMin >= 0 ? "+" : "-";
++  const abs = Math.abs(offsetMin);
++  const oh = String(Math.floor(abs / 60)).padStart(2, "0");
++  const om = String(abs % 60).padStart(2, "0");
++  return `${ny}-${nm}-${nd}T23:59:59${sign}${oh}:${om}`;
++}
++
++// ---------------------------------------------------------------------------
++// I/O shell + run lifecycle
++// ---------------------------------------------------------------------------
++
++async function reportRun(
++  client: HermesClient,
++  agentRunId: number | undefined,
++  body: { status: RunStatus; output?: unknown; error?: string },
++): Promise<void> {
++  if (agentRunId == null) return;
++  try {
++    await client.patchRun(agentRunId, body);
++  } catch {
++    // best-effort telemetry
++  }
++}
++
++function isStale(occurredAt: Date, now: Date, cfg: DebriefConfig): boolean {
++  const t = occurredAt.getTime();
++  if (Number.isNaN(t)) return false; // unparseable timestamp: don't drop
++  return now.getTime() - t > cfg.maxStaleHours * 3600_000;
++}
++
++export async function runDebrief(
++  opts: RunDebriefOptions,
++): Promise<RunDebriefResult> {
++  const cfg: DebriefConfig = { ...DEFAULT_DEBRIEF_CONFIG, ...opts.config };
++  const now = opts.now ?? new Date();
++
++  await reportRun(opts.client, opts.agentRunId, { status: "running" });
++
++  try {
++    const result = await execute(opts, cfg, now);
++    await reportRun(opts.client, opts.agentRunId, {
++      status: result.posted > 0 ? "completed" : "skipped",
++      output: {
++        posted: result.posted,
++        skipped: result.skipped,
++        date: result.date,
++      },
++    });
++    return result;
++  } catch (err) {
++    await reportRun(opts.client, opts.agentRunId, {
++      status: "failed",
++      error: err instanceof Error ? err.message : String(err),
++    });
++    throw err;
++  }
++}
++
++async function execute(
++  opts: RunDebriefOptions,
++  cfg: DebriefConfig,
++  now: Date,
++): Promise<RunDebriefResult> {
++  const events = await opts.client.getEvents({
++    type: "day.ended",
++    limit: 1,
++    repId: opts.repId,
++  });
++  const ev = events[0];
++  if (!ev) return { posted: 0, skipped: "no_day_ended" };
++
++  const occurredAt = new Date(ev.createdAt);
++  if (isStale(occurredAt, now, cfg)) {
++    return { posted: 0, skipped: "stale_day_ended" };
++  }
++
++  const card = buildDebrief({
++    repId: opts.repId,
++    daySummary: ev.payload,
++    occurredAt,
++    now,
++    cfg,
++    agentRunId: opts.agentRunId,
++  });
++  if (!card) return { posted: 0, skipped: "empty_day_summary" };
++
++  await opts.client.postSuggestion(card);
++  return {
++    posted: 1,
++    date: (card.data?.date as string | undefined) ?? undefined,
++    dedupeKey: card.dedupeKey,
++  };
++}
+diff --git a/artifacts/hermes-agent/src/index.ts b/artifacts/hermes-agent/src/index.ts
+index e5c782a..99408f7 100644
+--- a/artifacts/hermes-agent/src/index.ts
++++ b/artifacts/hermes-agent/src/index.ts
+@@ -3,3 +3,4 @@ export * from "./proximity";
+ export * from "./client";
+ export * from "./nearby-prospect";
+ export * from "./harness";
++export * from "./debrief";
+diff --git a/artifacts/hermes-agent/src/run-debrief.ts b/artifacts/hermes-agent/src/run-debrief.ts
+new file mode 100644
+index 0000000..1410c9c
+--- /dev/null
++++ b/artifacts/hermes-agent/src/run-debrief.ts
+@@ -0,0 +1,76 @@
++/**
++ * One-shot CLI: run the debrief behavior once for every active rep. Intended to
++ * be invoked by an external scheduler shortly after reps typically end their
++ * day. Per-rep run tracking and failure isolation mirror run-harness; the
++ * per-day dedupeKey makes repeated invocation safe (no stacking).
++ *
++ *   HERMES_BASE_URL=http://localhost:8080 \
++ *   AGENT_API_KEY=... HERMES_REP_IDS=rep-7,rep-9 \
++ *   pnpm --filter @workspace/hermes-agent run-debrief
++ *
++ * Rep list source is config for now (HERMES_REP_IDS); the future source is a
++ * GET /api/agent/reps endpoint once team auth lands (same as run-harness).
++ */
++import { HermesClient } from "./client";
++import { parseRepIds } from "./harness";
++import { runDebrief, type RunDebriefResult } from "./debrief";
++
++interface RepOutcome {
++  repId: string;
++  agentRunId?: number;
++  result?: RunDebriefResult;
++  error?: string;
++}
++
++async function main(): Promise<void> {
++  const baseUrl =
++    process.env.HERMES_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:8080";
++  const apiKey = process.env.AGENT_API_KEY;
++  if (!apiKey) throw new Error("AGENT_API_KEY is required");
++
++  const repIds = parseRepIds(process.env.HERMES_REP_IDS);
++  if (repIds.length === 0) {
++    throw new Error("HERMES_REP_IDS is required (comma-separated rep ids)");
++  }
++
++  const client = new HermesClient({ baseUrl, apiKey });
++  const now = new Date();
++  const reps: RepOutcome[] = [];
++  let totalPosted = 0;
++
++  for (const repId of repIds) {
++    const outcome: RepOutcome = { repId };
++    try {
++      let agentRunId: number | undefined;
++      try {
++        const created = await client.createRun({
++          eventType: "debrief.scheduled",
++          eventId: `hermes:debrief:${repId}:${now.toISOString()}`,
++        });
++        agentRunId = created.id;
++        outcome.agentRunId = agentRunId;
++      } catch (err) {
++        // Fall back to an untracked run rather than dropping the rep.
++        outcome.error = `createRun failed: ${
++          err instanceof Error ? err.message : String(err)
++        }`;
++      }
++
++      const result = await runDebrief({ client, repId, now, agentRunId });
++      outcome.result = result;
++      totalPosted += result.posted;
++    } catch (err) {
++      outcome.error = err instanceof Error ? err.message : String(err);
++    }
++    reps.push(outcome);
++  }
++
++  console.log(
++    JSON.stringify({ ranAt: now.toISOString(), reps, totalPosted }, null, 2),
++  );
++}
++
++main().catch((err) => {
++  console.error(err instanceof Error ? err.message : err);
++  process.exit(1);
++});
+diff --git a/artifacts/hermes-agent/src/types.ts b/artifacts/hermes-agent/src/types.ts
+index 4d3c155..272d4e9 100644
+--- a/artifacts/hermes-agent/src/types.ts
++++ b/artifacts/hermes-agent/src/types.ts
+@@ -30,25 +30,41 @@ export interface EventItem {
+   entityId?: number;
+   businessId?: number;
+   visitId?: number;
+-  payload?: Record<string, unknown>;
++  repId?: string | null;
++  payload?: Record<string, unknown> | null;
+   source: string;
+   createdAt: string;
+ }
+ 
+ export type SuggestionPriority = "low" | "normal" | "high" | "urgent";
+ 
++/** Card types the server accepts (see api-server suggestions route enum). */
++export type SuggestionType =
++  | "callback_reminder"
++  | "nearby_prospect"
++  | "coaching"
++  | "debrief"
++  | "other";
++
++/**
++ * A suggestion card payload. `type`-specific behaviors fill the optional fields
++ * they need: nearby_prospect always sets businessId/actionUrl/priorityScore;
++ * debrief is rep-level and omits them. Only the fields common to every card are
++ * required here.
++ */
+ export interface SuggestionPayload {
+-  type: "nearby_prospect";
++  type: SuggestionType;
+   title: string;
+   body: string;
+   priority: SuggestionPriority;
+-  businessId: number;
+-  repId?: string;
+-  priorityScore: number;
+   dedupeKey: string;
+-  actionLabel: string;
+-  actionUrl: string;
+   expiresAt: string;
+-  agentRunId?: number;
++  /** Every card carries a (possibly empty) free-form context bag. */
+   data: Record<string, unknown>;
++  businessId?: number;
++  repId?: string;
++  priorityScore?: number;
++  actionLabel?: string;
++  actionUrl?: string;
++  agentRunId?: number;
+ }
+diff --git a/artifacts/hermes-agent/tests/debrief.test.ts b/artifacts/hermes-agent/tests/debrief.test.ts
+new file mode 100644
+index 0000000..80c58ed
+--- /dev/null
++++ b/artifacts/hermes-agent/tests/debrief.test.ts
+@@ -0,0 +1,300 @@
++/**
++ * debrief tests. The pure builder (buildDebrief / parseDaySummary) is exercised
++ * directly; the orchestrator (runDebrief) is driven through a real HermesClient
++ * with an injected fetch so query building and run lifecycle are covered without
++ * a network. The free-form daySummary parsing is the part most worth pinning.
++ */
++import assert from "node:assert/strict";
++import { describe, it } from "node:test";
++import { HermesClient } from "../src/client";
++import {
++  DEFAULT_DEBRIEF_CONFIG,
++  buildDebrief,
++  parseDaySummary,
++  runDebrief,
++  endOfNextDayIso,
++} from "../src/debrief";
++
++// 18:30 America/Chicago (CDT, -05:00) on 2026-06-19.
++const NOW = new Date("2026-06-19T23:30:00Z");
++const cfg = DEFAULT_DEBRIEF_CONFIG;
++
++interface Captured {
++  method: string;
++  path: string;
++  query: URLSearchParams;
++  body: any;
++}
++
++function makeFetch(opts: {
++  captured: Captured[];
++  events?: unknown[];
++  failOn?: (method: string, path: string) => boolean;
++}): typeof fetch {
++  return (async (url: string | URL, init?: RequestInit) => {
++    const u = new URL(String(url));
++    const method = init?.method ?? "GET";
++    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
++    opts.captured.push({ method, path: u.pathname, query: u.searchParams, body });
++
++    if (opts.failOn?.(method, u.pathname)) {
++      return new Response("boom", { status: 500 });
++    }
++
++    let payload: unknown = {};
++    if (u.pathname === "/api/agent/events") payload = opts.events ?? [];
++    else if (u.pathname === "/api/agent/suggestions") payload = { id: 1 };
++    else if (u.pathname.startsWith("/api/agent/runs/")) payload = {};
++
++    return new Response(JSON.stringify(payload), {
++      status: 200,
++      headers: { "content-type": "application/json" },
++    });
++  }) as unknown as typeof fetch;
++}
++
++function client(fetchImpl: typeof fetch): HermesClient {
++  return new HermesClient({
++    baseUrl: "http://localhost:8080",
++    apiKey: "test-key",
++    fetchImpl,
++  });
++}
++
++function dayEvent(payload: unknown, createdAt = "2026-06-19T23:00:00Z") {
++  return { id: 5, type: "day.ended", repId: "rep-7", payload, source: "server", createdAt };
++}
++
++describe("parseDaySummary", () => {
++  it("pulls counts via synonyms and explicit priorities", () => {
++    const p = parseDaySummary({
++      visitsCount: 4,
++      wins: 1,
++      prospectsAdded: 2,
++      callbacksScheduled: 3,
++      tomorrow: ["Revisit Acme", "Call Dana", "Prep demo", "Extra"],
++    });
++    assert.equal(p.visits, 4);
++    assert.equal(p.closes, 1);
++    assert.equal(p.newProspects, 2);
++    assert.equal(p.callbacks, 3);
++    assert.deepEqual(p.priorities, ["Revisit Acme", "Call Dana", "Prep demo", "Extra"]);
++  });
++
++  it("is tolerant of garbage and missing fields", () => {
++    const p = parseDaySummary({ visits: "lots", priorities: [1, 2] as any });
++    assert.equal(p.visits, undefined);
++    assert.deepEqual(p.priorities, []);
++  });
++
++  it("returns an empty parse for null/undefined", () => {
++    assert.deepEqual(parseDaySummary(null), { priorities: [] });
++    assert.deepEqual(parseDaySummary(undefined), { priorities: [] });
++  });
++});
++
++describe("buildDebrief (pure)", () => {
++  it("builds a grounded card from counts + explicit priorities", () => {
++    const card = buildDebrief({
++      repId: "rep-7",
++      daySummary: { visits: 4, closes: 1, date: "2026-06-19", priorities: ["Revisit Acme", "Call Dana"] },
++      occurredAt: NOW,
++      now: NOW,
++      cfg,
++    })!;
++    assert.ok(card);
++    assert.equal(card.type, "debrief");
++    assert.equal(card.priority, "normal");
++    assert.equal(card.dedupeKey, "hermes:debrief:rep-7:2026-06-19");
++    assert.match(card.title, /4 visits, 1 close/);
++    assert.match(card.body, /Tomorrow's focus:/);
++    assert.match(card.body, /- Revisit Acme/);
++    assert.match(card.body, /- Call Dana/);
++    // expiry is end of the NEXT local day.
++    assert.match(card.expiresAt, /^2026-06-20T23:59:59-05:00$/);
++    assert.equal((card.data as any).visits, 4);
++    assert.equal((card as any).businessId, undefined);
++  });
++
++  it("caps priorities at maxPriorities", () => {
++    const card = buildDebrief({
++      repId: "rep-7",
++      daySummary: { visits: 1, priorities: ["a", "b", "c", "d", "e"] },
++      occurredAt: NOW,
++      now: NOW,
++      cfg,
++    })!;
++    const bullets = card.body.split("\n").filter((l) => l.startsWith("- "));
++    assert.equal(bullets.length, cfg.maxPriorities);
++  });
++
++  it("derives priorities from outcomes/callbacks when none are explicit", () => {
++    const card = buildDebrief({
++      repId: "rep-7",
++      daySummary: { visits: 3, callbacks: 1, outcomes: { interested: 2, not_interested: 1 } },
++      occurredAt: NOW,
++      now: NOW,
++      cfg,
++    })!;
++    assert.match(card.body, /Follow up with 2 interested prospects/);
++    assert.match(card.body, /1 callback lined up/);
++  });
++
++  it("summarizes outcomes in the recap when no counts are present", () => {
++    const card = buildDebrief({
++      repId: "rep-7",
++      daySummary: { outcomes: { interested: 2, closed: 1 } },
++      occurredAt: NOW,
++      now: NOW,
++      cfg,
++    })!;
++    assert.match(card.title, /interested ×2/);
++  });
++
++  it("falls back to the event date when the summary omits one", () => {
++    const card = buildDebrief({
++      repId: "rep-7",
++      daySummary: { visits: 2 },
++      occurredAt: NOW, // 18:30 CDT on the 19th
++      now: NOW,
++      cfg,
++    })!;
++    assert.equal(card.dedupeKey, "hermes:debrief:rep-7:2026-06-19");
++  });
++
++  it("returns null when there is nothing to say", () => {
++    assert.equal(
++      buildDebrief({ repId: "rep-7", daySummary: {}, occurredAt: NOW, now: NOW, cfg }),
++      null,
++    );
++    assert.equal(
++      buildDebrief({ repId: "rep-7", daySummary: null, occurredAt: NOW, now: NOW, cfg }),
++      null,
++    );
++  });
++});
++
++describe("endOfNextDayIso", () => {
++  it("rolls to the next local day at 23:59:59 with offset", () => {
++    assert.equal(endOfNextDayIso(NOW, "America/Chicago"), "2026-06-20T23:59:59-05:00");
++  });
++  it("rolls across a month boundary", () => {
++    const lastDay = new Date("2026-06-30T18:00:00Z"); // 13:00 CDT on the 30th
++    assert.equal(endOfNextDayIso(lastDay, "America/Chicago"), "2026-07-01T23:59:59-05:00");
++  });
++});
++
++describe("runDebrief (orchestration + lifecycle)", () => {
++  it("scopes the feed by repId and type, posts one card, reports completed", async () => {
++    const captured: Captured[] = [];
++    const res = await runDebrief({
++      client: client(
++        makeFetch({
++          captured,
++          events: [dayEvent({ visits: 4, closes: 1, priorities: ["Revisit Acme"] })],
++        }),
++      ),
++      repId: "rep-7",
++      now: NOW,
++      agentRunId: 42,
++    });
++
++    assert.equal(res.posted, 1);
++    assert.equal(res.dedupeKey, "hermes:debrief:rep-7:2026-06-19");
++
++    const ev = captured.find((c) => c.path === "/api/agent/events")!;
++    assert.equal(ev.query.get("repId"), "rep-7");
++    assert.equal(ev.query.get("type"), "day.ended");
++    assert.equal(ev.query.get("limit"), "1");
++
++    const sugg = captured.find((c) => c.path === "/api/agent/suggestions")!;
++    assert.equal(sugg.body.type, "debrief");
++    assert.equal(sugg.body.agentRunId, 42);
++
++    const statuses = captured
++      .filter((c) => c.method === "PATCH" && c.path === "/api/agent/runs/42")
++      .map((c) => c.body.status);
++    assert.deepEqual(statuses, ["running", "completed"]);
++  });
++
++  it("skips (no_day_ended) when the rep has no day.ended event", async () => {
++    const captured: Captured[] = [];
++    const res = await runDebrief({
++      client: client(makeFetch({ captured, events: [] })),
++      repId: "rep-7",
++      now: NOW,
++      agentRunId: 7,
++    });
++    assert.equal(res.posted, 0);
++    assert.equal(res.skipped, "no_day_ended");
++    const statuses = captured
++      .filter((c) => c.path === "/api/agent/runs/7")
++      .map((c) => c.body.status);
++    assert.deepEqual(statuses, ["running", "skipped"]);
++    assert.equal(captured.some((c) => c.path === "/api/agent/suggestions"), false);
++  });
++
++  it("skips (stale_day_ended) when the latest day.ended is too old", async () => {
++    const captured: Captured[] = [];
++    const res = await runDebrief({
++      client: client(
++        makeFetch({ captured, events: [dayEvent({ visits: 4 }, "2026-06-15T00:00:00Z")] }),
++      ),
++      repId: "rep-7",
++      now: NOW,
++    });
++    assert.equal(res.skipped, "stale_day_ended");
++    assert.equal(captured.some((c) => c.path === "/api/agent/suggestions"), false);
++  });
++
++  it("skips (empty_day_summary) when the summary carries nothing", async () => {
++    const captured: Captured[] = [];
++    const res = await runDebrief({
++      client: client(makeFetch({ captured, events: [dayEvent({})] })),
++      repId: "rep-7",
++      now: NOW,
++    });
++    assert.equal(res.skipped, "empty_day_summary");
++    assert.equal(captured.some((c) => c.path === "/api/agent/suggestions"), false);
++  });
++
++  it("reports failed and rethrows when posting throws", async () => {
++    const captured: Captured[] = [];
++    await assert.rejects(
++      runDebrief({
++        client: client(
++          makeFetch({
++            captured,
++            events: [dayEvent({ visits: 4, priorities: ["x"] })],
++            failOn: (m, p) => m === "POST" && p === "/api/agent/suggestions",
++          }),
++        ),
++        repId: "rep-7",
++        now: NOW,
++        agentRunId: 99,
++      }),
++      /500/,
++    );
++    const statuses = captured
++      .filter((c) => c.path === "/api/agent/runs/99")
++      .map((c) => c.body.status);
++    assert.deepEqual(statuses, ["running", "failed"]);
++  });
++
++  it("does not let a telemetry PATCH failure discard a successful run", async () => {
++    const captured: Captured[] = [];
++    const res = await runDebrief({
++      client: client(
++        makeFetch({
++          captured,
++          events: [dayEvent({ visits: 4, priorities: ["x"] })],
++          failOn: (m, p) => m === "PATCH" && p.startsWith("/api/agent/runs/"),
++        }),
++      ),
++      repId: "rep-7",
++      now: NOW,
++      agentRunId: 99,
++    });
++    assert.equal(res.posted, 1);
++  });
++});
