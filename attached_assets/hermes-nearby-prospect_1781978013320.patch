@@ -1,0 +1,815 @@
+From a0ab5e0387d4bfc27df7015103996043da33b11d Mon Sep 17 00:00:00 2001
+From: Tonka <tonkatriathlete@gmail.com>
+Date: Fri, 19 Jun 2026 21:09:48 +0000
+Subject: [PATCH] feat(hermes-agent): add nearby_prospect behavior
+
+First Hermes advisory behavior, built end-to-end against the agent API.
+
+- pure core (proximity.ts): haversine distance, drop-in time-window gate,
+  eligibility (un-visited or high-priority), ranking, suggestion payload
+- HTTP client (client.ts): Bearer-auth wrapper over /api/agent/*
+- orchestrator (nearby-prospect.ts): anchor = rep's most recent visit's
+  business coords; rank nearby eligible prospects; post cards; report run
+- CLI runner (run-nearby.ts) for the scheduled harness
+- tests: 15 unit tests over the pure core + a deterministic live e2e driver
+
+Defaults: 1.0 mi radius, 09:00-17:00 America/Chicago, max 3 cards/run.
+Dedupe key hermes:nearby:{repId}:{businessId}:{date} (upsert, never stacks).
+---
+ artifacts/hermes-agent/package.json           |  18 ++
+ artifacts/hermes-agent/src/client.ts          |  77 ++++++
+ artifacts/hermes-agent/src/index.ts           |   4 +
+ artifacts/hermes-agent/src/nearby-prospect.ts | 135 ++++++++++
+ artifacts/hermes-agent/src/proximity.ts       | 243 ++++++++++++++++++
+ artifacts/hermes-agent/src/run-nearby.ts      |  28 ++
+ artifacts/hermes-agent/src/types.ts           |  54 ++++
+ artifacts/hermes-agent/tests/e2e-run.ts       |  18 ++
+ .../hermes-agent/tests/proximity.test.ts      | 126 +++++++++
+ artifacts/hermes-agent/tsconfig.json          |   9 +
+ 10 files changed, 712 insertions(+)
+ create mode 100644 artifacts/hermes-agent/package.json
+ create mode 100644 artifacts/hermes-agent/src/client.ts
+ create mode 100644 artifacts/hermes-agent/src/index.ts
+ create mode 100644 artifacts/hermes-agent/src/nearby-prospect.ts
+ create mode 100644 artifacts/hermes-agent/src/proximity.ts
+ create mode 100644 artifacts/hermes-agent/src/run-nearby.ts
+ create mode 100644 artifacts/hermes-agent/src/types.ts
+ create mode 100644 artifacts/hermes-agent/tests/e2e-run.ts
+ create mode 100644 artifacts/hermes-agent/tests/proximity.test.ts
+ create mode 100644 artifacts/hermes-agent/tsconfig.json
+
+diff --git a/artifacts/hermes-agent/package.json b/artifacts/hermes-agent/package.json
+new file mode 100644
+index 0000000..6f28e5d
+--- /dev/null
++++ b/artifacts/hermes-agent/package.json
+@@ -0,0 +1,18 @@
++{
++  "name": "@workspace/hermes-agent",
++  "version": "0.0.0",
++  "private": true,
++  "type": "module",
++  "exports": {
++    ".": "./src/index.ts"
++  },
++  "scripts": {
++    "run-nearby": "tsx src/run-nearby.ts",
++    "test": "tsx --test tests/*.test.ts",
++    "typecheck": "tsc -p tsconfig.json --noEmit"
++  },
++  "devDependencies": {
++    "@types/node": "catalog:",
++    "tsx": "catalog:"
++  }
++}
+diff --git a/artifacts/hermes-agent/src/client.ts b/artifacts/hermes-agent/src/client.ts
+new file mode 100644
+index 0000000..f2d829c
+--- /dev/null
++++ b/artifacts/hermes-agent/src/client.ts
+@@ -0,0 +1,77 @@
++/**
++ * Thin HTTP client for the Sales-Visit-Log agent API. Every call is
++ * Bearer-authenticated; this is the only place Hermes touches the network.
++ */
++import type { AgentContext, EventItem, SuggestionPayload } from "./types";
++
++export interface HermesClientOptions {
++  baseUrl: string;
++  apiKey: string;
++  /** Injectable for tests. */
++  fetchImpl?: typeof fetch;
++}
++
++export type RunStatus =
++  | "queued"
++  | "running"
++  | "completed"
++  | "failed"
++  | "skipped";
++
++export class HermesClient {
++  private readonly baseUrl: string;
++  private readonly apiKey: string;
++  private readonly fetchImpl: typeof fetch;
++
++  constructor(opts: HermesClientOptions) {
++    this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
++    this.apiKey = opts.apiKey;
++    this.fetchImpl = opts.fetchImpl ?? fetch;
++  }
++
++  private async req<T>(
++    method: string,
++    path: string,
++    body?: unknown,
++  ): Promise<T> {
++    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
++      method,
++      headers: {
++        authorization: `Bearer ${this.apiKey}`,
++        ...(body ? { "content-type": "application/json" } : {}),
++      },
++      body: body ? JSON.stringify(body) : undefined,
++    });
++    if (!res.ok) {
++      const text = await res.text().catch(() => "");
++      throw new Error(`${method} ${path} → ${res.status}: ${text.slice(0, 300)}`);
++    }
++    return (await res.json()) as T;
++  }
++
++  getContext(): Promise<AgentContext> {
++    return this.req<AgentContext>("GET", "/api/agent/context");
++  }
++
++  getEvents(params: { type?: string; limit?: number; since?: string } = {}): Promise<
++    EventItem[]
++  > {
++    const q = new URLSearchParams();
++    if (params.type) q.set("type", params.type);
++    if (params.limit != null) q.set("limit", String(params.limit));
++    if (params.since) q.set("since", params.since);
++    const qs = q.toString();
++    return this.req<EventItem[]>("GET", `/api/agent/events${qs ? `?${qs}` : ""}`);
++  }
++
++  postSuggestion(body: SuggestionPayload): Promise<{ id: number }> {
++    return this.req<{ id: number }>("POST", "/api/agent/suggestions", body);
++  }
++
++  patchRun(
++    id: number,
++    body: { status: RunStatus; output?: unknown; error?: string },
++  ): Promise<unknown> {
++    return this.req("PATCH", `/api/agent/runs/${id}`, body);
++  }
++}
+diff --git a/artifacts/hermes-agent/src/index.ts b/artifacts/hermes-agent/src/index.ts
+new file mode 100644
+index 0000000..cc8cf9b
+--- /dev/null
++++ b/artifacts/hermes-agent/src/index.ts
+@@ -0,0 +1,4 @@
++export * from "./types";
++export * from "./proximity";
++export * from "./client";
++export * from "./nearby-prospect";
+diff --git a/artifacts/hermes-agent/src/nearby-prospect.ts b/artifacts/hermes-agent/src/nearby-prospect.ts
+new file mode 100644
+index 0000000..b6fe793
+--- /dev/null
++++ b/artifacts/hermes-agent/src/nearby-prospect.ts
+@@ -0,0 +1,135 @@
++/**
++ * nearby_prospect orchestration: find the rep's last-known anchor, rank nearby
++ * eligible prospects, and post the top cards. Pure logic lives in proximity.ts;
++ * this file is the I/O shell.
++ */
++import type { HermesClient } from "./client";
++import {
++  DEFAULT_NEARBY_CONFIG,
++  buildSuggestion,
++  isWithinDropInWindow,
++  rankNearby,
++  type NearbyConfig,
++} from "./proximity";
++import type { BusinessCtx } from "./types";
++
++export type SkipReason =
++  | "outside_drop_in_window"
++  | "no_recent_visit"
++  | "anchor_not_in_context"
++  | "anchor_missing_coords"
++  | "no_eligible_nearby";
++
++export interface RunNearbyOptions {
++  client: HermesClient;
++  repId?: string;
++  /** Defaults to now; injectable for deterministic runs/tests. */
++  now?: Date;
++  config?: Partial<NearbyConfig>;
++  /** When set, the run reports its lifecycle to PATCH /agent/runs/:id. */
++  agentRunId?: number;
++}
++
++export interface RunNearbyResult {
++  posted: number;
++  skipped?: SkipReason;
++  anchorBusinessId?: number;
++  cards: { businessId: number; distanceMi: number; priorityScore: number }[];
++}
++
++export async function runNearbyProspect(
++  opts: RunNearbyOptions,
++): Promise<RunNearbyResult> {
++  const cfg: NearbyConfig = { ...DEFAULT_NEARBY_CONFIG, ...opts.config };
++  const now = opts.now ?? new Date();
++
++  if (opts.agentRunId != null) {
++    await opts.client.patchRun(opts.agentRunId, { status: "running" });
++  }
++
++  const finish = async (
++    result: RunNearbyResult,
++  ): Promise<RunNearbyResult> => {
++    if (opts.agentRunId != null) {
++      const status = result.posted > 0 ? "completed" : "skipped";
++      await opts.client.patchRun(opts.agentRunId, {
++        status,
++        output: {
++          posted: result.posted,
++          skipped: result.skipped,
++          anchorBusinessId: result.anchorBusinessId,
++        },
++      });
++    }
++    return result;
++  };
++
++  if (!isWithinDropInWindow(now, cfg)) {
++    return finish({ posted: 0, skipped: "outside_drop_in_window", cards: [] });
++  }
++
++  const recentVisits = await opts.client.getEvents({ type: "visit", limit: 1 });
++  const anchorEvent = recentVisits[0];
++  const anchorBusinessId = anchorEvent?.businessId;
++  if (!anchorBusinessId) {
++    return finish({ posted: 0, skipped: "no_recent_visit", cards: [] });
++  }
++
++  const context = await opts.client.getContext();
++  const byId = new Map<number, BusinessCtx>(
++    context.businesses.map((b) => [b.id, b]),
++  );
++  const anchor = byId.get(anchorBusinessId);
++  if (!anchor) {
++    return finish({
++      posted: 0,
++      skipped: "anchor_not_in_context",
++      anchorBusinessId,
++      cards: [],
++    });
++  }
++  if (anchor.latitude == null || anchor.longitude == null) {
++    return finish({
++      posted: 0,
++      skipped: "anchor_missing_coords",
++      anchorBusinessId,
++      cards: [],
++    });
++  }
++
++  const matches = rankNearby(
++    { latitude: anchor.latitude, longitude: anchor.longitude },
++    anchor.id,
++    context.businesses,
++    cfg,
++  ).slice(0, cfg.maxCards);
++
++  if (matches.length === 0) {
++    return finish({
++      posted: 0,
++      skipped: "no_eligible_nearby",
++      anchorBusinessId,
++      cards: [],
++    });
++  }
++
++  const cards: RunNearbyResult["cards"] = [];
++  for (const m of matches) {
++    const payload = buildSuggestion(m, {
++      repId: opts.repId,
++      anchorName: anchor.name,
++      anchorBusinessId: anchor.id,
++      now,
++      cfg,
++      agentRunId: opts.agentRunId,
++    });
++    await opts.client.postSuggestion(payload);
++    cards.push({
++      businessId: m.business.id,
++      distanceMi: Number(m.distanceMi.toFixed(2)),
++      priorityScore: m.priorityScore,
++    });
++  }
++
++  return finish({ posted: cards.length, anchorBusinessId, cards });
++}
+diff --git a/artifacts/hermes-agent/src/proximity.ts b/artifacts/hermes-agent/src/proximity.ts
+new file mode 100644
+index 0000000..eeee3ea
+--- /dev/null
++++ b/artifacts/hermes-agent/src/proximity.ts
+@@ -0,0 +1,243 @@
++/**
++ * Pure geo + eligibility + payload logic for the nearby_prospect behavior.
++ * No I/O, no Date.now hidden anywhere — every function takes its inputs, so the
++ * whole rule is deterministically testable.
++ */
++import type {
++  BusinessCtx,
++  Priority,
++  SuggestionPayload,
++  SuggestionPriority,
++} from "./types";
++
++export interface LatLng {
++  latitude: number;
++  longitude: number;
++}
++
++export interface NearbyConfig {
++  /** Max distance (miles) from the anchor for a card to fire. */
++  radiusMi: number;
++  /** Inclusive local hour the drop-in window opens. */
++  dropInStartHour: number;
++  /** Exclusive local hour the drop-in window closes (also the card's expiry). */
++  dropInEndHour: number;
++  /** IANA zone the rep's local time is evaluated in. */
++  timeZone: string;
++  /** Max cards a single run may produce. */
++  maxCards: number;
++  /** Statuses that disqualify a business even if otherwise eligible. */
++  excludeStatuses: string[];
++  /** Ranking weight per priority bucket. */
++  priorityWeights: Record<Priority, number>;
++}
++
++export const DEFAULT_NEARBY_CONFIG: NearbyConfig = {
++  radiusMi: 1.0,
++  dropInStartHour: 9,
++  dropInEndHour: 17,
++  timeZone: "America/Chicago",
++  maxCards: 3,
++  excludeStatuses: [],
++  priorityWeights: { high: 1.0, medium: 0.5, low: 0.2 },
++};
++
++const EARTH_RADIUS_MI = 3958.7613;
++
++function toRad(deg: number): number {
++  return (deg * Math.PI) / 180;
++}
++
++/** Great-circle distance in miles between two points. */
++export function haversineMiles(a: LatLng, b: LatLng): number {
++  const dLat = toRad(b.latitude - a.latitude);
++  const dLng = toRad(b.longitude - a.longitude);
++  const lat1 = toRad(a.latitude);
++  const lat2 = toRad(b.latitude);
++  const h =
++    Math.sin(dLat / 2) ** 2 +
++    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
++  return 2 * EARTH_RADIUS_MI * Math.asin(Math.min(1, Math.sqrt(h)));
++}
++
++/** Hour (0–23) of `now` in the configured time zone. */
++export function localHourInZone(now: Date, timeZone: string): number {
++  const fmt = new Intl.DateTimeFormat("en-US", {
++    timeZone,
++    hour: "2-digit",
++    hour12: false,
++  });
++  // "24" can appear at midnight in some environments; normalize to 0.
++  return Number(fmt.format(now)) % 24;
++}
++
++/** Local calendar date (YYYY-MM-DD) of `now` in the configured time zone. */
++export function localDateInZone(now: Date, timeZone: string): string {
++  const fmt = new Intl.DateTimeFormat("en-CA", {
++    timeZone,
++    year: "numeric",
++    month: "2-digit",
++    day: "2-digit",
++  });
++  return fmt.format(now); // en-CA yields YYYY-MM-DD
++}
++
++/** Is `now` inside [dropInStartHour, dropInEndHour) in local time? */
++export function isWithinDropInWindow(now: Date, cfg: NearbyConfig): boolean {
++  const h = localHourInZone(now, cfg.timeZone);
++  return h >= cfg.dropInStartHour && h < cfg.dropInEndHour;
++}
++
++function normalizePriority(p: string): Priority {
++  return p === "high" || p === "medium" || p === "low" ? p : "medium";
++}
++
++function hasCoords(b: BusinessCtx): b is BusinessCtx & LatLng {
++  return typeof b.latitude === "number" && typeof b.longitude === "number";
++}
++
++/**
++ * Eligible = has coords, not the anchor, not in excludeStatuses, and either
++ * un-visited (not_contacted) or high-priority.
++ */
++export function isEligible(
++  b: BusinessCtx,
++  anchorId: number,
++  cfg: NearbyConfig,
++): boolean {
++  if (!hasCoords(b)) return false;
++  if (b.id === anchorId) return false;
++  if (cfg.excludeStatuses.includes(b.status)) return false;
++  const unvisited = b.status === "not_contacted";
++  const highPriority = normalizePriority(b.priority) === "high";
++  return unvisited || highPriority;
++}
++
++export interface NearbyMatch {
++  business: BusinessCtx;
++  distanceMi: number;
++  priorityScore: number;
++}
++
++function clamp01(n: number): number {
++  return Math.max(0, Math.min(1, n));
++}
++
++/** Filter to eligible-and-within-radius, score, and sort best-first. */
++export function rankNearby(
++  anchor: LatLng,
++  anchorId: number,
++  businesses: BusinessCtx[],
++  cfg: NearbyConfig,
++): NearbyMatch[] {
++  const matches: NearbyMatch[] = [];
++  for (const b of businesses) {
++    if (!isEligible(b, anchorId, cfg)) continue;
++    const distanceMi = haversineMiles(anchor, {
++      latitude: b.latitude as number,
++      longitude: b.longitude as number,
++    });
++    if (distanceMi > cfg.radiusMi) continue;
++    const closeness = clamp01(1 - distanceMi / cfg.radiusMi);
++    const weight = cfg.priorityWeights[normalizePriority(b.priority)];
++    const priorityScore = clamp01(0.6 * closeness + 0.4 * weight);
++    matches.push({ business: b, distanceMi, priorityScore });
++  }
++  matches.sort((a, b) => b.priorityScore - a.priorityScore);
++  return matches;
++}
++
++function statusLabel(status: string): string {
++  if (status === "not_contacted") return "Un-visited";
++  return status.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
++}
++
++/** Build the suggestion card body for a match. Grounded — no invented facts. */
++export function buildSuggestion(
++  match: NearbyMatch,
++  opts: {
++    repId?: string;
++    anchorName: string;
++    anchorBusinessId: number;
++    now: Date;
++    cfg: NearbyConfig;
++    agentRunId?: number;
++  },
++): SuggestionPayload {
++  const { business: b, distanceMi, priorityScore } = match;
++  const priority = normalizePriority(b.priority);
++  const dist = distanceMi.toFixed(1);
++  const localDate = localDateInZone(opts.now, opts.cfg.timeZone);
++
++  const descriptor =
++    priority === "high"
++      ? `${statusLabel(b.status).toLowerCase()} high-priority prospect`
++      : `${statusLabel(b.status).toLowerCase()} prospect`;
++  const where = b.address ? ` ${b.address}.` : "";
++  const cardPriority: SuggestionPriority = priority === "high" ? "high" : "normal";
++
++  return {
++    type: "nearby_prospect",
++    title: `${b.name} is ${dist} mi away`,
++    body: `${capitalize(descriptor)} about ${dist} mi from your last stop (${opts.anchorName}).${where}`,
++    priority: cardPriority,
++    businessId: b.id,
++    repId: opts.repId,
++    priorityScore: Number(priorityScore.toFixed(3)),
++    dedupeKey: `hermes:nearby:${opts.repId ?? "rep"}:${b.id}:${localDate}`,
++    actionLabel: "Open prospect",
++    actionUrl: `/businesses/${b.id}`,
++    expiresAt: endOfWindowIso(opts.now, opts.cfg),
++    agentRunId: opts.agentRunId,
++    data: {
++      distanceMi: Number(distanceMi.toFixed(2)),
++      anchorBusinessId: opts.anchorBusinessId,
++      anchorName: opts.anchorName,
++    },
++  };
++}
++
++function capitalize(s: string): string {
++  return s.replace(/^\w/, (c) => c.toUpperCase());
++}
++
++/**
++ * ISO timestamp (with offset) for today's drop-in close in the rep's zone.
++ * Computed by finding the zone's UTC offset at `now` and applying it.
++ */
++export function endOfWindowIso(now: Date, cfg: NearbyConfig): string {
++  const date = localDateInZone(now, cfg.timeZone); // YYYY-MM-DD local
++  const offsetMin = zoneOffsetMinutes(now, cfg.timeZone);
++  const sign = offsetMin >= 0 ? "+" : "-";
++  const abs = Math.abs(offsetMin);
++  const oh = String(Math.floor(abs / 60)).padStart(2, "0");
++  const om = String(abs % 60).padStart(2, "0");
++  const hh = String(cfg.dropInEndHour).padStart(2, "0");
++  return `${date}T${hh}:00:00${sign}${oh}:${om}`;
++}
++
++/** Minutes east of UTC for `timeZone` at instant `now`. */
++export function zoneOffsetMinutes(now: Date, timeZone: string): number {
++  const dtf = new Intl.DateTimeFormat("en-US", {
++    timeZone,
++    year: "numeric",
++    month: "2-digit",
++    day: "2-digit",
++    hour: "2-digit",
++    minute: "2-digit",
++    second: "2-digit",
++    hour12: false,
++  });
++  const parts = dtf.formatToParts(now);
++  const map: Record<string, number> = {};
++  for (const p of parts) if (p.type !== "literal") map[p.type] = Number(p.value);
++  const asUtc = Date.UTC(
++    map.year,
++    map.month - 1,
++    map.day,
++    map.hour % 24,
++    map.minute,
++    map.second,
++  );
++  return Math.round((asUtc - now.getTime()) / 60000);
++}
+diff --git a/artifacts/hermes-agent/src/run-nearby.ts b/artifacts/hermes-agent/src/run-nearby.ts
+new file mode 100644
+index 0000000..c9d96a2
+--- /dev/null
++++ b/artifacts/hermes-agent/src/run-nearby.ts
+@@ -0,0 +1,28 @@
++/**
++ * One-shot CLI: run the nearby_prospect behavior once against the API.
++ *
++ *   HERMES_BASE_URL=http://localhost:8080 \
++ *   AGENT_API_KEY=... HERMES_REP_ID=rep-7 \
++ *   pnpm --filter @workspace/hermes-agent run-nearby
++ */
++import { HermesClient } from "./client";
++import { runNearbyProspect } from "./nearby-prospect";
++
++async function main(): Promise<void> {
++  const baseUrl =
++    process.env.HERMES_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:8080";
++  const apiKey = process.env.AGENT_API_KEY;
++  if (!apiKey) throw new Error("AGENT_API_KEY is required");
++
++  const client = new HermesClient({ baseUrl, apiKey });
++  const result = await runNearbyProspect({
++    client,
++    repId: process.env.HERMES_REP_ID,
++  });
++  console.log(JSON.stringify(result, null, 2));
++}
++
++main().catch((err) => {
++  console.error(err instanceof Error ? err.message : err);
++  process.exit(1);
++});
+diff --git a/artifacts/hermes-agent/src/types.ts b/artifacts/hermes-agent/src/types.ts
+new file mode 100644
+index 0000000..4d3c155
+--- /dev/null
++++ b/artifacts/hermes-agent/src/types.ts
+@@ -0,0 +1,54 @@
++/**
++ * Shapes Hermes consumes from the Sales-Visit-Log agent API. These mirror the
++ * server's `GET /api/agent/context` and `GET /api/agent/events` responses; we
++ * keep our own copy so the agent stays a decoupled HTTP client.
++ */
++
++export type Priority = "low" | "medium" | "high";
++
++export interface BusinessCtx {
++  id: number;
++  name: string;
++  address: string | null;
++  sector: string | null;
++  status: string;
++  priority: string;
++  latitude: number | null;
++  longitude: number | null;
++}
++
++export interface AgentContext {
++  businesses: BusinessCtx[];
++  upcomingCallbacks: unknown[];
++  generatedAt: string;
++}
++
++export interface EventItem {
++  id: number;
++  type: string;
++  entityType?: string;
++  entityId?: number;
++  businessId?: number;
++  visitId?: number;
++  payload?: Record<string, unknown>;
++  source: string;
++  createdAt: string;
++}
++
++export type SuggestionPriority = "low" | "normal" | "high" | "urgent";
++
++export interface SuggestionPayload {
++  type: "nearby_prospect";
++  title: string;
++  body: string;
++  priority: SuggestionPriority;
++  businessId: number;
++  repId?: string;
++  priorityScore: number;
++  dedupeKey: string;
++  actionLabel: string;
++  actionUrl: string;
++  expiresAt: string;
++  agentRunId?: number;
++  data: Record<string, unknown>;
++}
+diff --git a/artifacts/hermes-agent/tests/e2e-run.ts b/artifacts/hermes-agent/tests/e2e-run.ts
+new file mode 100644
+index 0000000..39e5f77
+--- /dev/null
++++ b/artifacts/hermes-agent/tests/e2e-run.ts
+@@ -0,0 +1,18 @@
++/** Deterministic e2e driver: runs the behavior once with a fixed `now`. */
++import { HermesClient } from "../src/client";
++import { runNearbyProspect } from "../src/nearby-prospect";
++
++const client = new HermesClient({
++  baseUrl: process.env.HERMES_BASE_URL ?? "http://localhost:8080",
++  apiKey: process.env.AGENT_API_KEY ?? "",
++});
++const now = new Date(process.env.HERMES_NOW ?? new Date().toISOString());
++
++runNearbyProspect({ client, repId: process.env.HERMES_REP_ID ?? "rep-7", now })
++  .then((r) => {
++    console.log("RESULT " + JSON.stringify(r));
++  })
++  .catch((e) => {
++    console.error("ERR " + (e instanceof Error ? e.message : String(e)));
++    process.exit(1);
++  });
+diff --git a/artifacts/hermes-agent/tests/proximity.test.ts b/artifacts/hermes-agent/tests/proximity.test.ts
+new file mode 100644
+index 0000000..6f61c8f
+--- /dev/null
++++ b/artifacts/hermes-agent/tests/proximity.test.ts
+@@ -0,0 +1,126 @@
++import assert from "node:assert/strict";
++import { describe, it } from "node:test";
++import {
++  DEFAULT_NEARBY_CONFIG,
++  buildSuggestion,
++  haversineMiles,
++  isEligible,
++  isWithinDropInWindow,
++  localDateInZone,
++  rankNearby,
++  type NearbyConfig,
++} from "../src/proximity";
++import type { BusinessCtx } from "../src/types";
++
++const cfg: NearbyConfig = { ...DEFAULT_NEARBY_CONFIG };
++
++function biz(p: Partial<BusinessCtx> & { id: number }): BusinessCtx {
++  return {
++    id: p.id,
++    name: p.name ?? `Biz ${p.id}`,
++    address: p.address ?? null,
++    sector: p.sector ?? "retail",
++    status: p.status ?? "not_contacted",
++    priority: p.priority ?? "medium",
++    latitude: p.latitude ?? null,
++    longitude: p.longitude ?? null,
++  };
++}
++
++describe("haversineMiles", () => {
++  it("is ~0 for identical points", () => {
++    assert.ok(haversineMiles({ latitude: 41.8, longitude: -87.6 }, { latitude: 41.8, longitude: -87.6 }) < 1e-6);
++  });
++  it("matches a known distance (Chicago ~1 deg lat = ~69 mi)", () => {
++    const d = haversineMiles({ latitude: 41, longitude: -87 }, { latitude: 42, longitude: -87 });
++    assert.ok(Math.abs(d - 69.0) < 0.5, `got ${d}`);
++  });
++  it("computes a sub-mile hop", () => {
++    // ~0.01 deg lng at 41.8N ≈ 0.51 mi
++    const d = haversineMiles({ latitude: 41.8, longitude: -87.6 }, { latitude: 41.8, longitude: -87.59 });
++    assert.ok(d > 0.4 && d < 0.6, `got ${d}`);
++  });
++});
++
++describe("isWithinDropInWindow", () => {
++  it("true at noon Chicago", () => {
++    // 2026-06-19 17:00Z = 12:00 America/Chicago (CDT, -5)
++    assert.equal(isWithinDropInWindow(new Date("2026-06-19T17:00:00Z"), cfg), true);
++  });
++  it("false at 7am Chicago", () => {
++    assert.equal(isWithinDropInWindow(new Date("2026-06-19T12:00:00Z"), cfg), false);
++  });
++  it("false at 6pm Chicago (window is exclusive at end)", () => {
++    assert.equal(isWithinDropInWindow(new Date("2026-06-19T23:00:00Z"), cfg), false);
++  });
++});
++
++describe("isEligible", () => {
++  const anchorId = 1;
++  it("un-visited with coords qualifies", () => {
++    assert.equal(isEligible(biz({ id: 2, status: "not_contacted", latitude: 41.8, longitude: -87.6 }), anchorId, cfg), true);
++  });
++  it("contacted high-priority qualifies", () => {
++    assert.equal(isEligible(biz({ id: 2, status: "contacted", priority: "high", latitude: 41.8, longitude: -87.6 }), anchorId, cfg), true);
++  });
++  it("contacted medium-priority does not qualify", () => {
++    assert.equal(isEligible(biz({ id: 2, status: "contacted", priority: "medium", latitude: 41.8, longitude: -87.6 }), anchorId, cfg), false);
++  });
++  it("no coords never qualifies", () => {
++    assert.equal(isEligible(biz({ id: 2, status: "not_contacted" }), anchorId, cfg), false);
++  });
++  it("the anchor itself is excluded", () => {
++    assert.equal(isEligible(biz({ id: 1, status: "not_contacted", latitude: 41.8, longitude: -87.6 }), anchorId, cfg), false);
++  });
++  it("excludeStatuses is honored", () => {
++    const c = { ...cfg, excludeStatuses: ["not_interested"] };
++    assert.equal(isEligible(biz({ id: 2, status: "not_interested", priority: "high", latitude: 41.8, longitude: -87.6 }), anchorId, c), false);
++  });
++});
++
++describe("rankNearby", () => {
++  const anchor = { latitude: 41.8, longitude: -87.6 };
++  it("drops out-of-radius prospects and sorts best-first", () => {
++    const businesses = [
++      biz({ id: 1, latitude: 41.8, longitude: -87.6 }), // anchor
++      biz({ id: 2, name: "Close hi", priority: "high", status: "not_contacted", latitude: 41.8, longitude: -87.595 }),
++      biz({ id: 3, name: "Close med", priority: "medium", status: "not_contacted", latitude: 41.8, longitude: -87.594 }),
++      biz({ id: 4, name: "Far", priority: "high", status: "not_contacted", latitude: 42.5, longitude: -87.6 }),
++    ];
++    const out = rankNearby(anchor, 1, businesses, cfg);
++    assert.deepEqual(out.map((m) => m.business.id), [2, 3]);
++    assert.ok(out[0].priorityScore >= out[1].priorityScore);
++    assert.ok(out.every((m) => m.distanceMi <= cfg.radiusMi));
++  });
++});
++
++describe("buildSuggestion", () => {
++  const now = new Date("2026-06-19T17:00:00Z"); // noon Chicago
++  it("produces a grounded, well-formed card", () => {
++    const match = {
++      business: biz({ id: 12, name: "Acme Hardware", address: "123 Main St", status: "not_contacted", priority: "high", latitude: 41.8, longitude: -87.595 }),
++      distanceMi: 0.42,
++      priorityScore: 0.81,
++    };
++    const s = buildSuggestion(match, { repId: "rep-7", anchorName: "Bob's Diner", anchorBusinessId: 1, now, cfg });
++    assert.equal(s.type, "nearby_prospect");
++    assert.equal(s.businessId, 12);
++    assert.equal(s.priority, "high");
++    assert.equal(s.title, "Acme Hardware is 0.4 mi away");
++    assert.equal(s.dedupeKey, `hermes:nearby:rep-7:12:${localDateInZone(now, cfg.timeZone)}`);
++    assert.equal(s.actionUrl, "/businesses/12");
++    assert.match(s.expiresAt, /T17:00:00[-+]\d{2}:\d{2}$/);
++    assert.ok(s.body.includes("Bob's Diner"));
++    assert.ok(s.body.includes("0.4"));
++    assert.equal(s.data.distanceMi, 0.42);
++  });
++  it("medium-priority prospect yields a normal-priority card", () => {
++    const match = {
++      business: biz({ id: 5, name: "Lou's", status: "not_contacted", priority: "medium", latitude: 41.8, longitude: -87.59 }),
++      distanceMi: 0.7,
++      priorityScore: 0.4,
++    };
++    const s = buildSuggestion(match, { repId: "rep-7", anchorName: "Anchor", anchorBusinessId: 1, now, cfg });
++    assert.equal(s.priority, "normal");
++  });
++});
+diff --git a/artifacts/hermes-agent/tsconfig.json b/artifacts/hermes-agent/tsconfig.json
+new file mode 100644
+index 0000000..589a591
+--- /dev/null
++++ b/artifacts/hermes-agent/tsconfig.json
+@@ -0,0 +1,9 @@
++{
++  "extends": "../../tsconfig.base.json",
++  "compilerOptions": {
++    "outDir": "dist",
++    "rootDir": ".",
++    "types": ["node"]
++  },
++  "include": ["src", "tests"]
++}
+-- 
+2.34.1
+
