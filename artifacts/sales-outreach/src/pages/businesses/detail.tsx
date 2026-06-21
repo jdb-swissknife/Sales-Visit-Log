@@ -2,7 +2,7 @@ import { useGetBusiness, useListVisitsForBusiness, getGetBusinessQueryKey, getLi
 import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Phone, Star, Map, Plus, Clock, FileText, ArrowLeft } from "lucide-react";
+import { MapPin, Phone, Star, Map, Plus, Clock, FileText, ArrowLeft, Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO } from "date-fns";
 
@@ -111,6 +111,36 @@ export default function BusinessDetail() {
         </Card>
 
         <div className="md:col-span-2 space-y-4">
+          {business.replacementScore != null && business.priorityGrade && (
+            <Card className="border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+                  HVAC replacement score
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-emerald-100 text-emerald-800 shadow-none dark:bg-emerald-900 dark:text-emerald-200">
+                    {business.priorityGrade} door
+                  </Badge>
+                  <span className="font-semibold">{business.replacementScore}/100</span>
+                  {business.clusterKey && <span className="text-muted-foreground">{business.clusterKey}</span>}
+                </div>
+                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                  {business.yearBuilt && <span>Built: {business.yearBuilt}</span>}
+                  {business.lastHvacPermitYear && <span>Last HVAC permit: {business.lastHvacPermitYear}</span>}
+                  {business.ownerOccupied != null && <span>{business.ownerOccupied ? "Owner occupied" : "Likely rental/absentee"}</span>}
+                  {business.livingAreaSqft && <span>{business.livingAreaSqft.toLocaleString()} sqft</span>}
+                  {business.amiBand && <span>AMI: {business.amiBand}</span>}
+                  {business.utilityProvider && <span>Utility: {business.utilityProvider}</span>}
+                </div>
+                {business.scoreReasons && <p className="text-emerald-950/80 dark:text-emerald-100/80">{business.scoreReasons}</p>}
+                {business.recommendedPitch && <p className="rounded-lg bg-white/80 p-3 text-foreground dark:bg-background/70">{business.recommendedPitch}</p>}
+              </CardContent>
+            </Card>
+          )}
+
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Clock className="h-5 w-5" /> Visit History
           </h3>

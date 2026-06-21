@@ -44,10 +44,10 @@ interface OutcomeOption {
 }
 
 const OUTCOMES: OutcomeOption[] = [
-  { key: "sale", label: "Sale", icon: CheckCircle2, visitOutcome: "positive", businessStatus: "converted", color: "border-green-500 data-[selected=true]:bg-green-500" },
+  { key: "appointment", label: "Appointment", icon: CheckCircle2, visitOutcome: "positive", businessStatus: "converted", color: "border-green-500 data-[selected=true]:bg-green-500" },
   { key: "callback", label: "Callback", icon: CalendarClock, visitOutcome: "follow_up_needed", businessStatus: "follow_up", color: "border-amber-500 data-[selected=true]:bg-amber-500" },
   { key: "no_answer", label: "No answer", icon: PhoneMissed, visitOutcome: "neutral", businessStatus: "contacted", color: "border-blue-500 data-[selected=true]:bg-blue-500" },
-  { key: "not_interested", label: "Not interested", icon: XCircle, visitOutcome: "negative", businessStatus: "not_interested", color: "border-red-500 data-[selected=true]:bg-red-500" },
+  { key: "not_fit", label: "Not a fit", icon: XCircle, visitOutcome: "negative", businessStatus: "not_interested", color: "border-slate-500 data-[selected=true]:bg-slate-500" },
 ];
 
 const CALLBACK_PRESETS = [

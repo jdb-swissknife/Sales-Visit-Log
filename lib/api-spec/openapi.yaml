@@ -553,8 +553,136 @@ paths:
                 items:
                   $ref: "#/components/schemas/DayRoute"
 
+  /hvac/score:
+    post:
+      operationId: scoreHvacTarget
+      tags: [hvac]
+      summary: Score one HVAC target payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HvacTargetInput"
+      responses:
+        "200":
+          description: Scored HVAC target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HvacScoreResult"
+
+  /hvac/rescore:
+    post:
+      operationId: rescoreHvacTargets
+      tags: [hvac]
+      summary: Recompute HVAC scores for stored targets
+      responses:
+        "200":
+          description: Rescore count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+                required:
+                  - updated
+
+  /hvac/clusters:
+    get:
+      operationId: getHvacClusters
+      tags: [hvac]
+      summary: Get HVAC neighborhood cluster summaries
+      responses:
+        "200":
+          description: Cluster summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HvacClusterSummary"
+
 components:
   schemas:
+
+    HvacTargetInput:
+      type: object
+      properties:
+        address:
+          type: string
+        zip:
+          type: string
+        street:
+          type: string
+        subdivision:
+          type: string
+        neighborhood:
+          type: string
+        yearBuilt:
+          type: integer
+        lastHvacPermitYear:
+          type: integer
+        lastMajorRenovationYear:
+          type: integer
+        ownerOccupied:
+          type: boolean
+        livingAreaSqft:
+          type: integer
+        amiBand:
+          type: string
+        utilityProvider:
+          type: string
+
+    HvacScoreResult:
+      allOf:
+        - $ref: "#/components/schemas/HvacTargetInput"
+        - type: object
+          properties:
+            replacementScore:
+              type: integer
+            priorityGrade:
+              type: string
+              enum: [A, B, C, D]
+            scoreReasons:
+              type: array
+              items:
+                type: string
+            recommendedPitch:
+              type: string
+            clusterKey:
+              type: string
+          required:
+            - replacementScore
+            - priorityGrade
+            - scoreReasons
+            - recommendedPitch
+            - clusterKey
+
+    HvacClusterSummary:
+      type: object
+      properties:
+        clusterKey:
+          type: string
+        totalDoors:
+          type: integer
+        priorityDoors:
+          type: integer
+        aDoors:
+          type: integer
+        bDoors:
+          type: integer
+        averageScore:
+          type: number
+      required:
+        - clusterKey
+        - totalDoors
+        - priorityDoors
+        - aDoors
+        - bDoors
+        - averageScore
     HealthStatus:
       type: object
       properties:
@@ -590,6 +718,35 @@ components:
           type: number
         longitude:
           type: number
+        yearBuilt:
+          type: integer
+        lastHvacPermitYear:
+          type: integer
+        lastMajorRenovationYear:
+          type: integer
+        ownerOccupied:
+          type: boolean
+        livingAreaSqft:
+          type: integer
+        amiBand:
+          type: string
+        utilityProvider:
+          type: string
+        subdivision:
+          type: string
+        neighborhood:
+          type: string
+        replacementScore:
+          type: integer
+        priorityGrade:
+          type: string
+          enum: [A, B, C, D]
+        scoreReasons:
+          type: string
+        recommendedPitch:
+          type: string
+        clusterKey:
+          type: string
         priority:
           type: string
           enum: [high, medium, low]
@@ -652,6 +809,35 @@ components:
           type: number
         longitude:
           type: number
+        yearBuilt:
+          type: integer
+        lastHvacPermitYear:
+          type: integer
+        lastMajorRenovationYear:
+          type: integer
+        ownerOccupied:
+          type: boolean
+        livingAreaSqft:
+          type: integer
+        amiBand:
+          type: string
+        utilityProvider:
+          type: string
+        subdivision:
+          type: string
+        neighborhood:
+          type: string
+        replacementScore:
+          type: integer
+        priorityGrade:
+          type: string
+          enum: [A, B, C, D]
+        scoreReasons:
+          type: string
+        recommendedPitch:
+          type: string
+        clusterKey:
+          type: string
         priority:
           type: string
           enum: [high, medium, low]
@@ -1041,6 +1227,35 @@ components:
           type: number
         longitude:
           type: number
+        yearBuilt:
+          type: integer
+        lastHvacPermitYear:
+          type: integer
+        lastMajorRenovationYear:
+          type: integer
+        ownerOccupied:
+          type: boolean
+        livingAreaSqft:
+          type: integer
+        amiBand:
+          type: string
+        utilityProvider:
+          type: string
+        subdivision:
+          type: string
+        neighborhood:
+          type: string
+        replacementScore:
+          type: integer
+        priorityGrade:
+          type: string
+          enum: [A, B, C, D]
+        scoreReasons:
+          type: string
+        recommendedPitch:
+          type: string
+        clusterKey:
+          type: string
         priority:
           type: string
           enum: [high, medium, low]

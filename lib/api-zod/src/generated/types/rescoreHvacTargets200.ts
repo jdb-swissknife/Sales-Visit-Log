@@ -6,4 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type EventPayload = { [key: string]: unknown } | null;
+export type RescoreHvacTargets200 = {
+  updated: number;
+};

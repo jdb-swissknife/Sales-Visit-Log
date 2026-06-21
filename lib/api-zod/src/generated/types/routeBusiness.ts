@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RouteBusinessPriority } from "./routeBusinessPriority";
+import type { RouteBusinessPriorityGrade } from "./routeBusinessPriorityGrade";
 import type { RouteBusinessStatus } from "./routeBusinessStatus";
 
 export interface RouteBusiness {
@@ -19,6 +20,20 @@ export interface RouteBusiness {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: RouteBusinessPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority: RouteBusinessPriority;
   status: RouteBusinessStatus;
   routeDay?: number;

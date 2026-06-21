@@ -7,6 +7,7 @@
  */
 import type { BusinessCallType } from "./businessCallType";
 import type { BusinessPriority } from "./businessPriority";
+import type { BusinessPriorityGrade } from "./businessPriorityGrade";
 import type { BusinessStatus } from "./businessStatus";
 
 export interface Business {
@@ -22,6 +23,20 @@ export interface Business {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: BusinessPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority: BusinessPriority;
   status: BusinessStatus;
   callType?: BusinessCallType;

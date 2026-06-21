@@ -14,7 +14,7 @@ export interface Event {
   entityId?: number | null;
   businessId?: number | null;
   visitId?: number | null;
-  payload?: EventPayload | null;
+  payload?: EventPayload;
   repId?: string | null;
   source: string;
   createdAt: Date;

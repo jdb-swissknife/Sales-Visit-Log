@@ -5,9 +5,61 @@
  * Sales Outreach Field Notes API
  * OpenAPI spec version: 0.1.0
  */
+export interface HvacTargetInput {
+  address?: string;
+  zip?: string;
+  street?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+}
+
+export type HvacScoreResultPriorityGrade =
+  (typeof HvacScoreResultPriorityGrade)[keyof typeof HvacScoreResultPriorityGrade];
+
+export const HvacScoreResultPriorityGrade = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+} as const;
+
+export type HvacScoreResult = HvacTargetInput & {
+  replacementScore: number;
+  priorityGrade: HvacScoreResultPriorityGrade;
+  scoreReasons: string[];
+  recommendedPitch: string;
+  clusterKey: string;
+};
+
+export interface HvacClusterSummary {
+  clusterKey: string;
+  totalDoors: number;
+  priorityDoors: number;
+  aDoors: number;
+  bDoors: number;
+  averageScore: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
+
+export type BusinessPriorityGrade =
+  (typeof BusinessPriorityGrade)[keyof typeof BusinessPriorityGrade];
+
+export const BusinessPriorityGrade = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+} as const;
 
 export type BusinessPriority =
   (typeof BusinessPriority)[keyof typeof BusinessPriority];
@@ -50,6 +102,20 @@ export interface Business {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: BusinessPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority: BusinessPriority;
   status: BusinessStatus;
   callType?: BusinessCallType;
@@ -59,6 +125,16 @@ export interface Business {
   createdAt: string;
   updatedAt: string;
 }
+
+export type CreateBusinessBodyPriorityGrade =
+  (typeof CreateBusinessBodyPriorityGrade)[keyof typeof CreateBusinessBodyPriorityGrade];
+
+export const CreateBusinessBodyPriorityGrade = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+} as const;
 
 export type CreateBusinessBodyPriority =
   (typeof CreateBusinessBodyPriority)[keyof typeof CreateBusinessBodyPriority];
@@ -103,6 +179,20 @@ export interface CreateBusinessBody {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: CreateBusinessBodyPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
   callType?: CreateBusinessBodyCallType;
@@ -245,6 +335,7 @@ export interface CreateVisitBody {
   contactName?: string;
   contactPhone?: string;
   nextActionDate?: string;
+  repId?: string;
 }
 
 export type UpdateVisitBodyOutcome =
@@ -280,16 +371,17 @@ export interface CreateNoteBody {
   durationSeconds?: number;
 }
 
-export type EventPayload = { [key: string]: unknown };
+export type EventPayload = { [key: string]: unknown } | null;
 
 export interface Event {
   id: number;
   type: string;
-  entityType?: string;
-  entityId?: number;
-  businessId?: number;
-  visitId?: number;
+  entityType?: string | null;
+  entityId?: number | null;
+  businessId?: number | null;
+  visitId?: number | null;
   payload?: EventPayload;
+  repId?: string | null;
   source: string;
   createdAt: string;
 }
@@ -333,6 +425,16 @@ export interface SectorCount {
   positiveCount: number;
 }
 
+export type RouteBusinessPriorityGrade =
+  (typeof RouteBusinessPriorityGrade)[keyof typeof RouteBusinessPriorityGrade];
+
+export const RouteBusinessPriorityGrade = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+} as const;
+
 export type RouteBusinessPriority =
   (typeof RouteBusinessPriority)[keyof typeof RouteBusinessPriority];
 
@@ -364,6 +466,20 @@ export interface RouteBusiness {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: RouteBusinessPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority: RouteBusinessPriority;
   status: RouteBusinessStatus;
   routeDay?: number;
@@ -418,5 +534,13 @@ export type ListEventsParams = {
    * Filter by event type prefix (e.g. "visit.")
    */
   type?: string;
+  /**
+   * Scope the feed to a single rep (events with a matching rep_id)
+   */
+  repId?: string;
   limit?: number;
+};
+
+export type RescoreHvacTargets200 = {
+  updated: number;
 };
