@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useGetRoutesByDay, getGetRoutesByDayQueryKey } from "@workspace/api-client-react";
+import { useGetRoutesByDay, getGetRoutesByDayQueryKey, useGetHvacClusters } from "@workspace/api-client-react";
 import type { DayRoute, RouteBusiness } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { MapPin, Phone, Star, ChevronDown, ChevronRight, Building2, Route, Mic } from "lucide-react";
+import { MapPin, Phone, Star, ChevronDown, ChevronRight, Building2, Route, Mic, Home, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,35 @@ const DAY_BADGE_COLORS: Record<number, string> = {
   3: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   4: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
 };
+
+const GRADE_COLORS: Record<string, string> = {
+  A: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  B: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  C: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  D: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+};
+
+function splitScoreReasons(reasons?: string) {
+  return (reasons ?? "").split("; ").filter(Boolean);
+}
+
+function HvacScoreStrip({ business }: { business: RouteBusiness }) {
+  if (business.replacementScore == null || !business.priorityGrade) return null;
+  const reasons = splitScoreReasons(business.scoreReasons).slice(0, 2);
+  return (
+    <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50/60 p-2 text-xs dark:border-emerald-900 dark:bg-emerald-950/20">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge className={`shadow-none ${GRADE_COLORS[business.priorityGrade] || GRADE_COLORS.D}`}>
+          {business.priorityGrade} door
+        </Badge>
+        <span className="font-semibold text-emerald-900 dark:text-emerald-100">{business.replacementScore}/100 replacement score</span>
+        {business.clusterKey && <span className="text-muted-foreground">{business.clusterKey}</span>}
+      </div>
+      {reasons.length > 0 && <div className="mt-1 text-emerald-900/80 dark:text-emerald-100/80">{reasons.join(" · ")}</div>}
+      {business.recommendedPitch && <div className="mt-1 text-muted-foreground">{business.recommendedPitch}</div>}
+    </div>
+  );
+}
 
 function BusinessStopCard({ business, stopNumber }: { business: RouteBusiness; stopNumber: number }) {
   return (
@@ -80,6 +109,7 @@ function BusinessStopCard({ business, stopNumber }: { business: RouteBusiness; s
               )}
             </div>
           )}
+          <HvacScoreStrip business={business} />
         </div>
       </Link>
       <Link
@@ -236,16 +266,46 @@ function DayCard({ day }: { day: DayRoute }) {
 
 export default function RoutesPage() {
   const { data: days, isLoading } = useGetRoutesByDay({ query: { queryKey: getGetRoutesByDayQueryKey() } });
+  const { data: clusters } = useGetHvacClusters();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Route className="h-6 w-6" />
-          Route Plan
+          HVAC Blitz Route
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">4-day field prospecting route with geographic clustering.</p>
+        <p className="text-sm text-muted-foreground mt-1">Field route strengthened with home replacement scores and neighborhood cluster priority.</p>
       </div>
+
+      {clusters && clusters.length > 0 && (
+        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-background dark:border-emerald-900 dark:from-emerald-950/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
+              <h2 className="font-semibold text-emerald-950 dark:text-emerald-100">Top HVAC neighborhoods</h2>
+            </div>
+            <div className="grid gap-2 md:grid-cols-3">
+              {clusters.slice(0, 3).map((cluster) => (
+                <div key={cluster.clusterKey} className="rounded-lg border border-emerald-100 bg-white/80 p-3 text-sm dark:border-emerald-900 dark:bg-background/80">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-semibold text-foreground truncate">{cluster.clusterKey}</div>
+                    <Badge className="bg-emerald-100 text-emerald-800 shadow-none dark:bg-emerald-900 dark:text-emerald-200">
+                      {cluster.priorityDoors} A/B
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Home className="h-3 w-3" />{cluster.totalDoors} doors</span>
+                    <span>{cluster.aDoors} A</span>
+                    <span>{cluster.bDoors} B</span>
+                    <span>avg {cluster.averageScore}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">

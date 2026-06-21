@@ -34,6 +34,20 @@ export const ListBusinessesResponseItem = zod.object({
   mapsUrl: zod.string().optional(),
   latitude: zod.number().optional(),
   longitude: zod.number().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  replacementScore: zod.number().optional(),
+  priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+  scoreReasons: zod.string().optional(),
+  recommendedPitch: zod.string().optional(),
+  clusterKey: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -69,6 +83,20 @@ export const CreateBusinessBody = zod.object({
   mapsUrl: zod.string().optional(),
   latitude: zod.number().optional(),
   longitude: zod.number().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  replacementScore: zod.number().optional(),
+  priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+  scoreReasons: zod.string().optional(),
+  recommendedPitch: zod.string().optional(),
+  clusterKey: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -102,6 +130,20 @@ export const GetBusinessResponse = zod.object({
   mapsUrl: zod.string().optional(),
   latitude: zod.number().optional(),
   longitude: zod.number().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  replacementScore: zod.number().optional(),
+  priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+  scoreReasons: zod.string().optional(),
+  recommendedPitch: zod.string().optional(),
+  clusterKey: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -140,6 +182,20 @@ export const UpdateBusinessBody = zod.object({
   mapsUrl: zod.string().optional(),
   latitude: zod.number().optional(),
   longitude: zod.number().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  replacementScore: zod.number().optional(),
+  priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+  scoreReasons: zod.string().optional(),
+  recommendedPitch: zod.string().optional(),
+  clusterKey: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]).optional(),
   status: zod
     .enum([
@@ -166,6 +222,20 @@ export const UpdateBusinessResponse = zod.object({
   mapsUrl: zod.string().optional(),
   latitude: zod.number().optional(),
   longitude: zod.number().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  replacementScore: zod.number().optional(),
+  priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+  scoreReasons: zod.string().optional(),
+  recommendedPitch: zod.string().optional(),
+  clusterKey: zod.string().optional(),
   priority: zod.enum(["high", "medium", "low"]),
   status: zod.enum([
     "not_contacted",
@@ -202,8 +272,8 @@ export const ListVisitsForBusinessResponseItem = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
@@ -222,8 +292,8 @@ export const ListVisitsResponseItem = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
@@ -238,8 +308,8 @@ export const CreateVisitBody = zod.object({
   businessId: zod.number(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
   repId: zod.string().optional(),
 });
@@ -257,8 +327,8 @@ export const GetVisitResponse = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
   notes: zod.array(
     zod.object({
@@ -320,8 +390,8 @@ export const UpdateVisitBody = zod.object({
   outcome: zod
     .enum(["positive", "neutral", "negative", "follow_up_needed"])
     .optional(),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
 });
 
@@ -331,8 +401,8 @@ export const UpdateVisitResponse = zod.object({
   businessName: zod.string().optional(),
   visitedAt: zod.coerce.date(),
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
-  contactName: zod.string().nullish(),
-  contactPhone: zod.string().nullish(),
+  contactName: zod.string().optional(),
+  contactPhone: zod.string().optional(),
   nextActionDate: zod.coerce.date().optional(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
@@ -543,12 +613,12 @@ export const ListEventsQueryParams = zod.object({
 export const ListEventsResponseItem = zod.object({
   id: zod.number(),
   type: zod.string(),
-  entityType: zod.string().nullable().optional(),
-  entityId: zod.number().nullable().optional(),
-  businessId: zod.number().nullable().optional(),
-  visitId: zod.number().nullable().optional(),
-  payload: zod.record(zod.string(), zod.unknown()).nullable().optional(),
-  repId: zod.string().nullable().optional(),
+  entityType: zod.string().nullish(),
+  entityId: zod.number().nullish(),
+  businessId: zod.number().nullish(),
+  visitId: zod.number().nullish(),
+  payload: zod.record(zod.string(), zod.unknown()).nullish(),
+  repId: zod.string().nullish(),
   source: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -628,6 +698,20 @@ export const GetRoutesByDayResponseItem = zod.object({
       mapsUrl: zod.string().optional(),
       latitude: zod.number().optional(),
       longitude: zod.number().optional(),
+      yearBuilt: zod.number().optional(),
+      lastHvacPermitYear: zod.number().optional(),
+      lastMajorRenovationYear: zod.number().optional(),
+      ownerOccupied: zod.boolean().optional(),
+      livingAreaSqft: zod.number().optional(),
+      amiBand: zod.string().optional(),
+      utilityProvider: zod.string().optional(),
+      subdivision: zod.string().optional(),
+      neighborhood: zod.string().optional(),
+      replacementScore: zod.number().optional(),
+      priorityGrade: zod.enum(["A", "B", "C", "D"]).optional(),
+      scoreReasons: zod.string().optional(),
+      recommendedPitch: zod.string().optional(),
+      clusterKey: zod.string().optional(),
       priority: zod.enum(["high", "medium", "low"]),
       status: zod.enum([
         "not_contacted",
@@ -646,3 +730,66 @@ export const GetRoutesByDayResponseItem = zod.object({
   ),
 });
 export const GetRoutesByDayResponse = zod.array(GetRoutesByDayResponseItem);
+
+/**
+ * @summary Score one HVAC target payload
+ */
+export const ScoreHvacTargetBody = zod.object({
+  address: zod.string().optional(),
+  zip: zod.string().optional(),
+  street: zod.string().optional(),
+  subdivision: zod.string().optional(),
+  neighborhood: zod.string().optional(),
+  yearBuilt: zod.number().optional(),
+  lastHvacPermitYear: zod.number().optional(),
+  lastMajorRenovationYear: zod.number().optional(),
+  ownerOccupied: zod.boolean().optional(),
+  livingAreaSqft: zod.number().optional(),
+  amiBand: zod.string().optional(),
+  utilityProvider: zod.string().optional(),
+});
+
+export const ScoreHvacTargetResponse = zod
+  .object({
+    address: zod.string().optional(),
+    zip: zod.string().optional(),
+    street: zod.string().optional(),
+    subdivision: zod.string().optional(),
+    neighborhood: zod.string().optional(),
+    yearBuilt: zod.number().optional(),
+    lastHvacPermitYear: zod.number().optional(),
+    lastMajorRenovationYear: zod.number().optional(),
+    ownerOccupied: zod.boolean().optional(),
+    livingAreaSqft: zod.number().optional(),
+    amiBand: zod.string().optional(),
+    utilityProvider: zod.string().optional(),
+  })
+  .and(
+    zod.object({
+      replacementScore: zod.number(),
+      priorityGrade: zod.enum(["A", "B", "C", "D"]),
+      scoreReasons: zod.array(zod.string()),
+      recommendedPitch: zod.string(),
+      clusterKey: zod.string(),
+    }),
+  );
+
+/**
+ * @summary Recompute HVAC scores for stored targets
+ */
+export const RescoreHvacTargetsResponse = zod.object({
+  updated: zod.number(),
+});
+
+/**
+ * @summary Get HVAC neighborhood cluster summaries
+ */
+export const GetHvacClustersResponseItem = zod.object({
+  clusterKey: zod.string(),
+  totalDoors: zod.number(),
+  priorityDoors: zod.number(),
+  aDoors: zod.number(),
+  bDoors: zod.number(),
+  averageScore: zod.number(),
+});
+export const GetHvacClustersResponse = zod.array(GetHvacClustersResponseItem);

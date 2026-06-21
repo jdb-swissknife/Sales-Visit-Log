@@ -7,6 +7,7 @@
  */
 import type { CreateBusinessBodyCallType } from "./createBusinessBodyCallType";
 import type { CreateBusinessBodyPriority } from "./createBusinessBodyPriority";
+import type { CreateBusinessBodyPriorityGrade } from "./createBusinessBodyPriorityGrade";
 import type { CreateBusinessBodyStatus } from "./createBusinessBodyStatus";
 
 export interface CreateBusinessBody {
@@ -24,6 +25,20 @@ export interface CreateBusinessBody {
   mapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  yearBuilt?: number;
+  lastHvacPermitYear?: number;
+  lastMajorRenovationYear?: number;
+  ownerOccupied?: boolean;
+  livingAreaSqft?: number;
+  amiBand?: string;
+  utilityProvider?: string;
+  subdivision?: string;
+  neighborhood?: string;
+  replacementScore?: number;
+  priorityGrade?: CreateBusinessBodyPriorityGrade;
+  scoreReasons?: string;
+  recommendedPitch?: string;
+  clusterKey?: string;
   priority?: CreateBusinessBodyPriority;
   status?: CreateBusinessBodyStatus;
   callType?: CreateBusinessBodyCallType;

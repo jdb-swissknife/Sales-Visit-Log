@@ -26,10 +26,14 @@ import type {
   DayRoute,
   Event,
   HealthStatus,
+  HvacClusterSummary,
+  HvacScoreResult,
+  HvacTargetInput,
   ListBusinessesParams,
   ListEventsParams,
   Media,
   Note,
+  RescoreHvacTargets200,
   SectorCount,
   SummaryStats,
   UpdateVisitBody,
@@ -2316,6 +2320,248 @@ export function useGetRoutesByDay<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRoutesByDayQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Score one HVAC target payload
+ */
+export const getScoreHvacTargetUrl = () => {
+  return `/api/hvac/score`;
+};
+
+export const scoreHvacTarget = async (
+  hvacTargetInput: HvacTargetInput,
+  options?: RequestInit,
+): Promise<HvacScoreResult> => {
+  return customFetch<HvacScoreResult>(getScoreHvacTargetUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(hvacTargetInput),
+  });
+};
+
+export const getScoreHvacTargetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scoreHvacTarget>>,
+    TError,
+    { data: BodyType<HvacTargetInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof scoreHvacTarget>>,
+  TError,
+  { data: BodyType<HvacTargetInput> },
+  TContext
+> => {
+  const mutationKey = ["scoreHvacTarget"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof scoreHvacTarget>>,
+    { data: BodyType<HvacTargetInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return scoreHvacTarget(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ScoreHvacTargetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof scoreHvacTarget>>
+>;
+export type ScoreHvacTargetMutationBody = BodyType<HvacTargetInput>;
+export type ScoreHvacTargetMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Score one HVAC target payload
+ */
+export const useScoreHvacTarget = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scoreHvacTarget>>,
+    TError,
+    { data: BodyType<HvacTargetInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof scoreHvacTarget>>,
+  TError,
+  { data: BodyType<HvacTargetInput> },
+  TContext
+> => {
+  return useMutation(getScoreHvacTargetMutationOptions(options));
+};
+
+/**
+ * @summary Recompute HVAC scores for stored targets
+ */
+export const getRescoreHvacTargetsUrl = () => {
+  return `/api/hvac/rescore`;
+};
+
+export const rescoreHvacTargets = async (
+  options?: RequestInit,
+): Promise<RescoreHvacTargets200> => {
+  return customFetch<RescoreHvacTargets200>(getRescoreHvacTargetsUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRescoreHvacTargetsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rescoreHvacTargets>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rescoreHvacTargets>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["rescoreHvacTargets"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rescoreHvacTargets>>,
+    void
+  > = () => {
+    return rescoreHvacTargets(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RescoreHvacTargetsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rescoreHvacTargets>>
+>;
+
+export type RescoreHvacTargetsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Recompute HVAC scores for stored targets
+ */
+export const useRescoreHvacTargets = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rescoreHvacTargets>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rescoreHvacTargets>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRescoreHvacTargetsMutationOptions(options));
+};
+
+/**
+ * @summary Get HVAC neighborhood cluster summaries
+ */
+export const getGetHvacClustersUrl = () => {
+  return `/api/hvac/clusters`;
+};
+
+export const getHvacClusters = async (
+  options?: RequestInit,
+): Promise<HvacClusterSummary[]> => {
+  return customFetch<HvacClusterSummary[]>(getGetHvacClustersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHvacClustersQueryKey = () => {
+  return [`/api/hvac/clusters`] as const;
+};
+
+export const getGetHvacClustersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHvacClusters>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHvacClusters>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHvacClustersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getHvacClusters>>> = ({
+    signal,
+  }) => getHvacClusters({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHvacClusters>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHvacClustersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHvacClusters>>
+>;
+export type GetHvacClustersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get HVAC neighborhood cluster summaries
+ */
+
+export function useGetHvacClusters<
+  TData = Awaited<ReturnType<typeof getHvacClusters>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHvacClusters>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHvacClustersQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

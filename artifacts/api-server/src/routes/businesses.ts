@@ -40,6 +40,20 @@ function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
     mapsUrl: b.mapsUrl ?? undefined,
     latitude: b.latitude ?? undefined,
     longitude: b.longitude ?? undefined,
+    yearBuilt: b.yearBuilt ?? undefined,
+    lastHvacPermitYear: b.lastHvacPermitYear ?? undefined,
+    lastMajorRenovationYear: b.lastMajorRenovationYear ?? undefined,
+    ownerOccupied: b.ownerOccupied ?? undefined,
+    livingAreaSqft: b.livingAreaSqft ?? undefined,
+    amiBand: b.amiBand ?? undefined,
+    utilityProvider: b.utilityProvider ?? undefined,
+    subdivision: b.subdivision ?? undefined,
+    neighborhood: b.neighborhood ?? undefined,
+    replacementScore: b.replacementScore ?? undefined,
+    priorityGrade: b.priorityGrade ?? undefined,
+    scoreReasons: b.scoreReasons ?? undefined,
+    recommendedPitch: b.recommendedPitch ?? undefined,
+    clusterKey: b.clusterKey ?? undefined,
   };
 }
 
