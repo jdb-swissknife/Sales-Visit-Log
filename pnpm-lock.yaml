@@ -426,6 +426,15 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
 
+  artifacts/plaud-sync:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+
   artifacts/sales-outreach:
     dependencies:
       maplibre-gl:
