@@ -2,7 +2,6 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { z } from "zod/v4";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
 
 const RequestUploadUrlBody = z.object({
   name: z.string(),

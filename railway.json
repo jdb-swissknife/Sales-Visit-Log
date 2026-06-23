@@ -1,0 +1,10 @@
+[deploy]
+# Railway auto-detects the Dockerfile. This just sets startup config.
+startCommand = "node --enable-source-maps ./artifacts/api-server/dist/index.mjs"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Health check (the app has GET /api/health)
+[deploy.healthcheck]
+path = "/api/health"
+timeout = 30
