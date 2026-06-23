@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, businessesTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { db, businessesTable, visitsTable } from "@workspace/db";
 import { geocodeAddress } from "../lib/geocode";
 import {
   ListBusinessesResponse,
@@ -28,29 +28,74 @@ function geocodeInBackground(businessId: number, address: string): void {
     .catch(() => {});
 }
 
-function sanitizeBusiness(b: typeof businessesTable.$inferSelect) {
-  return {
-    ...b,
-    routeDay: b.routeDay ?? undefined,
-    buildingGroup: b.buildingGroup ?? undefined,
-    notes: b.notes ?? undefined,
-    address: b.address ?? undefined,
-    phone: b.phone ?? undefined,
-    website: b.website ?? undefined,
-    mapsUrl: b.mapsUrl ?? undefined,
-    latitude: b.latitude ?? undefined,
-    longitude: b.longitude ?? undefined,
-  };
+/** Generic sanitizer that converts nulls to undefined for optional fields. */
+function sanitizeBusiness(b: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...b };
+  for (const key of ["routeDay", "buildingGroup", "notes", "address", "phone", "website", "mapsUrl", "latitude", "longitude", "geocodedAt", "lastVisitRepId", "lastVisitAt", "lastVisitOutcome"]) {
+    if (result[key] == null) (result as Record<string, unknown>)[key] = undefined;
+  }
+  return result;
 }
+
+// ---------------------------------------------------------------------------
+// GET /businesses — team-readable (all authenticated users see all prospects)
+// Includes last-visit coordination info (who/when) to prevent duplicate visits.
+// ---------------------------------------------------------------------------
 
 router.get("/businesses", async (req, res): Promise<void> => {
   const callType = typeof req.query.callType === "string" ? req.query.callType : undefined;
-  const query = db.select().from(businessesTable).$dynamic();
+  const query = db
+    .select({
+      id: businessesTable.id,
+      name: businessesTable.name,
+      address: businessesTable.address,
+      phone: businessesTable.phone,
+      website: businessesTable.website,
+      sector: businessesTable.sector,
+      rating: businessesTable.rating,
+      reviewCount: businessesTable.reviewCount,
+      notes: businessesTable.notes,
+      mapsUrl: businessesTable.mapsUrl,
+      priority: businessesTable.priority,
+      status: businessesTable.status,
+      callType: businessesTable.callType,
+      routeDay: businessesTable.routeDay,
+      isBonus: businessesTable.isBonus,
+      buildingGroup: businessesTable.buildingGroup,
+      latitude: businessesTable.latitude,
+      longitude: businessesTable.longitude,
+      geocodedAt: businessesTable.geocodedAt,
+      createdAt: businessesTable.createdAt,
+      updatedAt: businessesTable.updatedAt,
+      // Last visit coordination info: who visited and when (team-visible).
+      lastVisitRepId: sql<string | null>`(
+        SELECT rep_id FROM visits
+        WHERE visits.business_id = ${businessesTable.id}
+        ORDER BY visited_at DESC LIMIT 1
+      )`,
+      lastVisitAt: sql<string | null>`(
+        SELECT visited_at::text FROM visits
+        WHERE visits.business_id = ${businessesTable.id}
+        ORDER BY visited_at DESC LIMIT 1
+      )`,
+      lastVisitOutcome: sql<string | null>`(
+        SELECT outcome FROM visits
+        WHERE visits.business_id = ${businessesTable.id}
+        ORDER BY visited_at DESC LIMIT 1
+      )`,
+      visitCount: sql<number>`(SELECT COUNT(*) FROM visits WHERE visits.business_id = ${businessesTable.id})::int`,
+    })
+    .from(businessesTable)
+    .$dynamic();
   const businesses = callType
     ? await query.where(eq(businessesTable.callType, callType)).orderBy(businessesTable.createdAt)
     : await query.orderBy(businessesTable.createdAt);
-  res.json(ListBusinessesResponse.parse(businesses.map(sanitizeBusiness)));
+  res.json(businesses.map((b) => sanitizeBusiness(b as Record<string, unknown>)));
 });
+
+// ---------------------------------------------------------------------------
+// POST /businesses — any authenticated user can add prospects
+// ---------------------------------------------------------------------------
 
 router.post("/businesses", async (req, res): Promise<void> => {
   const parsed = CreateBusinessBody.safeParse(req.body);
@@ -65,8 +110,12 @@ router.post("/businesses", async (req, res): Promise<void> => {
   if (business.address && business.latitude == null) {
     geocodeInBackground(business.id, business.address);
   }
-  res.status(201).json(GetBusinessResponse.parse(sanitizeBusiness(business)));
+  res.status(201).json(sanitizeBusiness(business));
 });
+
+// ---------------------------------------------------------------------------
+// GET /businesses/:id — detail view (team-readable)
+// ---------------------------------------------------------------------------
 
 router.get("/businesses/:id", async (req, res): Promise<void> => {
   const params = GetBusinessParams.safeParse(req.params);
@@ -82,7 +131,7 @@ router.get("/businesses/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Business not found" });
     return;
   }
-  res.json(GetBusinessResponse.parse(sanitizeBusiness(business)));
+  res.json(sanitizeBusiness(business));
 });
 
 router.put("/businesses/:id", async (req, res): Promise<void> => {

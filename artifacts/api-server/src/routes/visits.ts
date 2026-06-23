@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { db, visitsTable, businessesTable, notesTable, mediaTable } from "@workspace/db";
 import { logEvent } from "../lib/events";
+import { canSeeAllReps } from "../middlewares/clerk-auth";
 import {
   ListVisitsResponse,
   ListVisitsForBusinessParams,
@@ -17,7 +18,13 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/visits", async (_req, res): Promise<void> => {
+router.get("/visits", async (req, res): Promise<void> => {
+  // Reps see only their own visits; leaders/admins/owners see all.
+  const conditions = [];
+  if (!canSeeAllReps(req.userRole) && req.userId) {
+    conditions.push(eq(visitsTable.repId, req.userId));
+  }
+
   const visits = await db
     .select({
       id: visitsTable.id,
@@ -28,12 +35,14 @@ router.get("/visits", async (_req, res): Promise<void> => {
       contactName: visitsTable.contactName,
       contactPhone: visitsTable.contactPhone,
       nextActionDate: visitsTable.nextActionDate,
+      repId: visitsTable.repId,
       createdAt: visitsTable.createdAt,
       noteCount: sql<number>`(SELECT COUNT(*) FROM notes WHERE notes.visit_id = ${visitsTable.id})::int`,
       mediaCount: sql<number>`(SELECT COUNT(*) FROM media WHERE media.visit_id = ${visitsTable.id})::int`,
     })
     .from(visitsTable)
     .leftJoin(businessesTable, eq(visitsTable.businessId, businessesTable.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(sql`${visitsTable.visitedAt} DESC`);
   res.json(ListVisitsResponse.parse(visits));
 });
@@ -71,9 +80,11 @@ router.post("/visits", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  // Override repId from the authenticated session (never trust client).
+  const visitData = { ...parsed.data, repId: req.userId };
   const [visit] = await db
     .insert(visitsTable)
-    .values(parsed.data)
+    .values(visitData)
     .returning();
   const business = await db
     .select({ name: businessesTable.name })

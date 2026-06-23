@@ -99,7 +99,10 @@ d("GET /api/agent/events — repId scoping", () => {
   it("write path: POST /api/visits with repId emits a visit.created event carrying that rep", async () => {
     const res = await fetch(`${baseUrl}/api/visits`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-test-user-id": repC,
+      },
       body: JSON.stringify({
         businessId,
         visitedAt: new Date().toISOString(),

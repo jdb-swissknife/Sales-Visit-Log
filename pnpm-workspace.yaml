@@ -5,6 +5,7 @@ packages:
   - scripts
 
 allowBuilds:
+  '@clerk/shared': set this to true or false
   esbuild: true
 
 autoInstallPeers: false
@@ -40,6 +41,7 @@ minimumReleaseAgeExclude:
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - '@clerk/shared'
   - esbuild
   - msw
   - unrs-resolver

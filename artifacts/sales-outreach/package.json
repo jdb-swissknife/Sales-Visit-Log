@@ -76,6 +76,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.0.0",
     "maplibre-gl": "^5.24.0"
   }
 }
