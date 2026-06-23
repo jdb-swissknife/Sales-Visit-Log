@@ -92,4 +92,22 @@ export class HermesClient {
   ): Promise<unknown> {
     return this.req("PATCH", `/api/agent/runs/${id}`, body);
   }
+
+  /**
+   * Upsert a rep-level insight (POST /agent/rep-insights). The server upserts
+   * by (repId, type), so repeated calls for the same pattern refresh the row
+   * rather than stacking.
+   */
+  postRepInsight(body: {
+    repId: string;
+    type: string;
+    summary: string;
+    score?: number;
+    periodStart?: string;
+    periodEnd?: string;
+    data?: Record<string, unknown>;
+    agentRunId?: number;
+  }): Promise<unknown> {
+    return this.req("POST", "/api/agent/rep-insights", body);
+  }
 }

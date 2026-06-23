@@ -11,7 +11,8 @@
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "run-harness": "tsx src/run-harness.ts",
-    "run-debrief": "tsx src/run-debrief.ts"
+    "run-debrief": "tsx src/run-debrief.ts",
+    "run-coaching": "tsx src/run-coaching.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db, mediaTable } from "@workspace/db";
-import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 import { logEvent } from "./events";
+import { downloadObjectBuffer } from "./objectStorage";
 
 const OPENAI_BASE = "https://api.openai.com/v1";
 const WHISPER_MODEL = "whisper-1";
@@ -102,15 +102,6 @@ async function structureTranscript(transcript: string): Promise<StructuredNote |
   };
 }
 
-async function loadAudioFromStorage(url: string): Promise<Buffer> {
-  // Stored serving URLs look like /api/storage/objects/<id>
-  const objectPath = url.replace(/^\/api\/storage/, "");
-  const storage = new ObjectStorageService();
-  const file = await storage.getObjectEntityFile(objectPath);
-  const [buffer] = await file.download();
-  return buffer;
-}
-
 /**
  * Transcribe + structure a voice media item, updating the row as it goes.
  * Designed to be called fire-and-forget after upload; never throws.
@@ -140,7 +131,7 @@ export async function processMediaTranscription(
       .set({ transcriptionStatus: "processing", transcriptionError: null })
       .where(eq(mediaTable.id, mediaId));
 
-    const buffer = audio?.buffer ?? (await loadAudioFromStorage(media.url));
+    const buffer = audio?.buffer ?? (await downloadObjectBuffer(media.url));
     const filename = audio?.filename ?? media.filename;
     const mimeType = audio?.mimeType ?? media.mimeType ?? "audio/webm";
 

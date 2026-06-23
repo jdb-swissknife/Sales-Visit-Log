@@ -1,0 +1,8 @@
+# Cloudflare Pages build config
+# Build command: pnpm install --frozen-lockfile && pnpm run build && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/sales-outreach run build
+# Build output directory: artifacts/sales-outreach/dist/public
+# Root directory: / (repo root)
+
+# Set these environment variables in Cloudflare Pages dashboard:
+# NODE_VERSION = 24
+# VITE_API_URL = https://your-api.up.railway.app

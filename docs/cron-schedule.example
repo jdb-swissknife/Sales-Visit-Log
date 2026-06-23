@@ -1,0 +1,19 @@
+# Cron jobs for Sales-Visit-Log (Railway Cron or external scheduler)
+# Run from the repo root with pnpm. Each is a one-shot that processes all reps.
+
+# ── Callback reminder sweep ────────────────────────────────────────────────
+# Runs daily at 7am local. Fires from the API server process itself
+# (startCallbackCron in index.ts) -- no external cron needed when CALLBACK_CRON_ENABLED=true.
+
+# ── Hermes agent behaviors ─────────────────────────────────────────────────
+# These run as one-shot CLI invocations. Schedule them via Railway Cron or any
+# cron service that can hit the container.
+
+# Nearby prospects: every 2 hours during business hours (9-5 local)
+0 9,11,13,15 * * 1-5 cd /app && HERMES_BASE_URL=http://localhost:8080 AGENT_API_KEY=$AGENT_API_KEY HERMES_REP_IDS=$HERMES_REP_IDS pnpm --filter @workspace/hermes-agent run-harness
+
+# Debrief: daily at 6pm local (after reps end their day)
+0 18 * * 1-5 cd /app && HERMES_BASE_URL=http://localhost:8080 AGENT_API_KEY=$AGENT_API_KEY HERMES_REP_IDS=$HERMES_REP_IDS pnpm --filter @workspace/hermes-agent run-debrief
+
+# Coaching: weekly on Monday morning (start of week recap + tips)
+0 9 * * 1 cd /app && HERMES_BASE_URL=http://localhost:8080 AGENT_API_KEY=$AGENT_API_KEY HERMES_REP_IDS=$HERMES_REP_IDS pnpm --filter @workspace/hermes-agent run-coaching
