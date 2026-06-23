@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import webhooksInboundRouter from "./routes/webhooks-inbound";
 import { logger } from "./lib/logger";
+import { clerkContext } from "./middlewares/clerk-auth";
 
 const app: Express = express();
 
@@ -26,7 +27,10 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
+
+// Clerk context (loose -- parses session if present, does not reject)
+app.use(clerkContext);
 
 // Mounted before express.json() — HMAC verification needs the raw body.
 app.use(webhooksInboundRouter);

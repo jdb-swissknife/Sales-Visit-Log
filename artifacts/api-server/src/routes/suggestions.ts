@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { db, agentSuggestionsTable } from "@workspace/db";
 import { suggestionBus } from "../lib/suggestion-bus";
 import { logEvent } from "../lib/events";
+import { canSeeAllReps } from "../middlewares/clerk-auth";
 
 /**
  * App-facing suggestions feed (what the rep sees).
@@ -29,6 +30,10 @@ router.get("/suggestions", async (req, res): Promise<void> => {
   }
 
   const conditions: SQL[] = [];
+  // Reps see only their own suggestions; leaders/admins/owners see all.
+  if (!canSeeAllReps(req.userRole) && req.userId) {
+    conditions.push(eq(agentSuggestionsTable.repId, req.userId));
+  }
   if (query.data.status) {
     const status = query.data.status === "new" ? "unread" : query.data.status;
     conditions.push(eq(agentSuggestionsTable.status, status));
