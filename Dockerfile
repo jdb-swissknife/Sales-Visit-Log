@@ -75,5 +75,5 @@ ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# Start the API server. Frontend is served separately (Cloudflare Pages or static).
-CMD ["node", "--enable-source-maps", "./artifacts/api-server/dist/index.mjs"]
+# Push schema to DB then start the API server.
+CMD ["sh", "-c", "node_modules/.pnpm/node_modules/.bin/drizzle-kit push --force --config lib/db/drizzle.config.ts && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"]
