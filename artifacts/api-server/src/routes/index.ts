@@ -19,27 +19,12 @@ router.use(healthRouter);
 router.use(storageRouter);
 
 // ── Agent routes (API key auth, applied inside the router) ──────────────────
-// Must be mounted BEFORE the authed router so requireAuth doesn't intercept.
 router.use(agentRouter);
 
 // ── Authenticated app routes (Clerk session required) ───────────────────────
-// Apply requireAuth to each sub-router individually so it only runs on
-// matching routes, not on all requests.
-const authedRouters = [
-  businessesRouter,
-  visitsRouter,
-  notesRouter,
-  mediaRouter,
-  statsRouter,
-  routesRouter,
-  eventsRouter,
-  suggestionsRouter,
-];
-
-for (const r of authedRouters) {
-  r.use(requireAuth);
-}
-
+// requireAuth is mounted on the parent router BEFORE the authed sub-routers,
+// so it runs for every request that reaches them.
+router.use(requireAuth);
 router.use(businessesRouter);
 router.use(visitsRouter);
 router.use(notesRouter);

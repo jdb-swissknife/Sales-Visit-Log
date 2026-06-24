@@ -146,9 +146,10 @@ async function verifyToken(token: string): Promise<JwtPayload | null> {
  * Does NOT reject unauthenticated requests. Apply globally.
  */
 export async function clerkContext(req: Request, _res: Response, next: NextFunction): Promise<void> {
-  // Test mode bypass: when NODE_ENV=test and a test-user header is present,
-  // inject a mock user without JWT verification.
-  if (process.env.NODE_ENV === "test") {
+  // Dev/test bypass: when NODE_ENV is test or development (and not production),
+  // allow mock users via headers. This lets you test locally before Clerk keys
+  // are configured. In production, these headers are ignored.
+  if (process.env.NODE_ENV !== "production") {
     const testUser = req.get("x-test-user-id");
     if (testUser) {
       req.userId = testUser;
