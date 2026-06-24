@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { UserButton } from "@clerk/react";
 import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon, CloudOff, RefreshCw } from "lucide-react";
 import { useOfflineQueue } from "@/hooks/use-offline-queue";
 
@@ -57,7 +58,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <MapPin className="h-5 w-5" />
           <span>OutreachLog</span>
         </div>
-        <OfflineStatusBadge />
+        <div className="flex items-center gap-3">
+          <OfflineStatusBadge />
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "h-8 w-8",
+              },
+            }}
+          />
+        </div>
       </header>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">

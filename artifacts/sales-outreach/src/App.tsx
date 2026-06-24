@@ -1,9 +1,11 @@
 import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Show, SignIn, SignUp, useAuth, UserButton } from "@clerk/react";
+import { Show, SignIn, SignUp, useAuth } from "@clerk/react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { AuthPage } from "@/components/auth-page";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 
@@ -63,14 +65,22 @@ function Router() {
       <Show when="signed-out">
         <Switch>
           <Route path="/sign-in">
-            <div className="flex min-h-screen items-center justify-center bg-background p-4">
-              <SignIn routing="path" path="/sign-in" />
-            </div>
+            <AuthPage>
+              <SignIn
+                routing="path"
+                path="/sign-in"
+                appearance={clerkAppearance}
+              />
+            </AuthPage>
           </Route>
           <Route path="/sign-up">
-            <div className="flex min-h-screen items-center justify-center bg-background p-4">
-              <SignUp routing="path" path="/sign-up" />
-            </div>
+            <AuthPage>
+              <SignUp
+                routing="path"
+                path="/sign-up"
+                appearance={clerkAppearance}
+              />
+            </AuthPage>
           </Route>
           <Route>
             <Redirect to="/sign-in" />
