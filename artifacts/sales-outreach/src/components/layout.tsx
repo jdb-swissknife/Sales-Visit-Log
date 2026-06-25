@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { UserButton } from "@clerk/react";
 import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon, CloudOff, RefreshCw } from "lucide-react";
 import { useOfflineQueue } from "@/hooks/use-offline-queue";
+import { CoachingFeed } from "@/components/coaching-feed";
 
 function OfflineStatusBadge() {
   const { isOnline, queuedCount, isSyncing, syncNow } = useOfflineQueue();
@@ -60,6 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex items-center gap-3">
           <OfflineStatusBadge />
+          <CoachingFeed />
           <UserButton
             appearance={{
               elements: {

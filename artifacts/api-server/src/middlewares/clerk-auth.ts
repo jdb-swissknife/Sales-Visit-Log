@@ -73,7 +73,7 @@ async function getClerkJwks(): Promise<Record<string, CryptoKey>> {
       const cryptoKey = await crypto.subtle.importKey(
         "jwk",
         { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: jwk.alg, key_ops: ["verify"] },
-        { name: "RS256", hash: "SHA-256" },
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         false,
         ["verify"],
       );
@@ -125,7 +125,12 @@ async function verifyToken(token: string): Promise<JwtPayload | null> {
     const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
     const sig = Buffer.from(parts[2], "base64url");
 
-    const valid = await crypto.subtle.verify("RS256", key, sig, data);
+    const valid = await crypto.subtle.verify(
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      key,
+      sig,
+      data,
+    );
     if (!valid) return null;
 
     const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as JwtPayload;
@@ -161,14 +166,20 @@ export async function clerkContext(req: Request, _res: Response, next: NextFunct
   if (!req.userId) {
     const token = extractToken(req);
     if (token) {
+      logger.info("Clerk token received", { len: token.length, head: token.slice(0, 30) });
       const payload = await verifyToken(token);
       if (payload) {
+        logger.info("Clerk token verified", { sub: payload.sub });
         req.userId = payload.sub;
         const role = payload.public_metadata?.role;
         req.userRole = (typeof role === "string" && ["owner", "admin", "sales_leader", "rep"].includes(role))
           ? role as UserRole
           : "rep";
+      } else {
+        logger.warn("Clerk token verification failed");
       }
+    } else {
+      logger.warn("No Clerk token in request");
     }
   }
   next();
