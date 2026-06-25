@@ -79,11 +79,19 @@ export default function MapPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Guard against API error responses (which would be objects, not arrays)
+  const businessesArray = Array.isArray(businesses) ? businesses : [];
+
+  // Show error if API returned non-array data
+  if (!Array.isArray(businesses) && businesses != null) {
+    console.error("API returned non-array businesses:", businesses);
+  }
+
   const located = useMemo(
-    () => (businesses ?? []).filter((b) => b.latitude != null && b.longitude != null),
-    [businesses]
+    () => businessesArray.filter((b) => b.latitude != null && b.longitude != null),
+    [businessesArray]
   );
-  const unlocatedCount = (businesses?.length ?? 0) - located.length;
+  const unlocatedCount = businessesArray.length - located.length;
 
   // Init map once
   useEffect(() => {
