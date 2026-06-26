@@ -23,6 +23,10 @@ import ColdCallPage from "@/pages/coldcall/index";
 
 const queryClient = new QueryClient();
 
+// Dev-only bypass: skip Clerk auth gate in `vite dev`.
+// The Vite proxy injects x-test-user-id so API calls authenticate as test-owner.
+const DEV_BYPASS_AUTH = import.meta.env.DEV;
+
 /** Wire Clerk's session token into the API client's auth header. */
 function AuthTokenBridge() {
   const { getToken } = useAuth();
@@ -59,6 +63,14 @@ function AuthenticatedApp() {
 }
 
 function Router() {
+  if (DEV_BYPASS_AUTH) {
+    return (
+      <>
+        <AuthTokenBridge />
+        <AuthenticatedApp />
+      </>
+    );
+  }
   return (
     <>
       <AuthTokenBridge />

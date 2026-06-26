@@ -38,6 +38,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
@@ -97,6 +98,14 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_URL ?? "http://localhost:8090",
         changeOrigin: true,
+        // Dev-only: inject test user header so the API accepts requests
+        // without a Clerk session. Only active in `vite dev`.
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("x-test-user-id", "test-owner");
+            proxyReq.setHeader("x-test-user-role", "owner");
+          });
+        },
       },
     },
     fs: {
