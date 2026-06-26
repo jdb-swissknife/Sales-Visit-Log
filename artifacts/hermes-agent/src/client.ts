@@ -2,7 +2,7 @@
  * Thin HTTP client for the Sales-Visit-Log agent API. Every call is
  * Bearer-authenticated; this is the only place Hermes touches the network.
  */
-import type { AgentContext, EventItem, SuggestionPayload } from "./types";
+import type { AgentContext, EventItem, SuggestionPayload, ResolvedCoachingContext } from "./types";
 
 export interface HermesClientOptions {
   baseUrl: string;
@@ -109,5 +109,14 @@ export class HermesClient {
     agentRunId?: number;
   }): Promise<unknown> {
     return this.req("POST", "/api/agent/rep-insights", body);
+  }
+
+  /**
+   * Fetch the resolved coaching context for a rep (rep scope then global
+   * fallback). Omit repId for global-only resolution.
+   */
+  getCoachingContext(params: { repId?: string } = {}): Promise<ResolvedCoachingContext> {
+    const qs = params.repId ? `?repId=${encodeURIComponent(params.repId)}` : "";
+    return this.req<ResolvedCoachingContext>("GET", `/api/agent/coaching-context${qs}`);
   }
 }

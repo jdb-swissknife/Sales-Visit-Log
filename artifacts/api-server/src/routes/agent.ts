@@ -15,6 +15,7 @@ import { ListEventsQueryParams, ListEventsResponse } from "@workspace/api-zod";
 import { requireAgentKey } from "../middlewares/agent-auth";
 import { suggestionBus } from "../lib/suggestion-bus";
 import { logEvent } from "../lib/events";
+import { resolveCoachingContext } from "../lib/coaching-context";
 
 /**
  * Agent-facing surface for Hermes. Everything here requires
@@ -96,6 +97,16 @@ router.get("/agent/context", async (_req, res): Promise<void> => {
   ]);
 
   res.json({ businesses, upcomingCallbacks: callbacks, generatedAt: new Date().toISOString() });
+});
+
+// ---------------------------------------------------------------------------
+// Coaching context (read-only resolution)
+// ---------------------------------------------------------------------------
+
+router.get("/agent/coaching-context", async (req, res): Promise<void> => {
+  const repId = typeof req.query.repId === "string" ? req.query.repId : undefined;
+  const ctx = await resolveCoachingContext(repId);
+  res.json(ctx);
 });
 
 // ---------------------------------------------------------------------------

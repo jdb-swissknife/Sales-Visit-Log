@@ -68,3 +68,34 @@ export interface SuggestionPayload {
   actionUrl?: string;
   agentRunId?: number;
 }
+
+/**
+ * Coaching context resolved by the api-server from coaching profiles + docs.
+ * Mirrors GET /api/agent/coaching-context. We keep our own copy so the agent
+ * stays a decoupled HTTP client.
+ */
+export interface ResolvedCoachingContext {
+  profile: null | {
+    id: number;
+    name: string;
+    scopeType: "global" | "rep" | "team";
+    scopeKey: string;
+  };
+  instructions: {
+    transcript: string | null;
+    coaching: string | null;
+  };
+  knowledgeDocs: Array<{
+    id: number;
+    title: string;
+    sourceType: string;
+    methodTag: string | null;
+    sortOrder: number;
+    body: string;
+  }>;
+  methodTags: string[];
+  compiled: {
+    transcript: string;
+    coaching: string;
+  };
+}

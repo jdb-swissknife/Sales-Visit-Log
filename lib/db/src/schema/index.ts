@@ -7,3 +7,5 @@ export * from "./agent-suggestions";
 export * from "./agent-runs";
 export * from "./agent-event-receipts";
 export * from "./insights";
+export * from "./coaching-profiles";
+export * from "./coaching-knowledge-docs";
