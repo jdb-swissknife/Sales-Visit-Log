@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { HermesClient } from "./client";
 import { buildDebrief, DEFAULT_DEBRIEF_CONFIG } from "./debrief";
+import { generateCoachingSuggestion } from "./llm";
 import type { ResolvedCoachingContext } from "./types";
 
 type Envelope = {
@@ -205,27 +206,58 @@ async function postMediaCoaching(client: HermesClient, agentRunId: number, envel
   // Fetch coaching context (never blocks the suggestion on failure).
   const coachingCtx = await safeGetCoachingContext(client, repId);
 
-  const title =
-    interestLevel === "hot"
-      ? `${businessName} sounds hot. Lock the next step now`
-      : nextStep
-        ? `Your ${businessName} voice note already named the next move`
-        : objections.length > 0
-          ? `Handle ${businessName}'s objections while the visit is fresh`
-          : `Turn your ${businessName} voice note into a concrete next step`;
+  // Try LLM-generated coaching when a profile is resolved. Falls back to
+  // hardcoded templates if the LLM is unavailable, not configured, or fails.
+  let coachingGenerated = false;
+  let title!: string;
+  let body!: string;
 
-  const lines = [
-    `The transcription came back ${interestLevel}.`,
-    summary ? `Summary: ${summary}` : "",
-    nextStep ? `Next step mentioned: ${nextStep}` : "",
-    followUpItems.length > 0 ? `Follow-ups captured: ${followUpItems.join("; ")}` : "",
-    objections.length > 0 ? `Objections to handle: ${objections.join("; ")}` : "",
-    contactInfo ? `Contact detail captured: ${contactInfo}` : "",
-    callbackMissing
-      ? "You still do not have a callback date on the visit. Put one on the calendar before this sits in notes only."
-      : "Now convert the note into a concrete action while the visit is still fresh.",
-    coachingCtx?.profile ? `Coaching profile: ${coachingCtx.profile.name}` : "",
-  ].filter(Boolean);
+  if (coachingCtx?.profile) {
+    const llmResult = await generateCoachingSuggestion(
+      {
+        businessName,
+        interestLevel,
+        summary,
+        nextStep,
+        followUpItems,
+        objections,
+        contactInfo,
+        callbackMissing,
+      },
+      coachingCtx.compiled.coaching,
+    );
+    if (llmResult) {
+      coachingGenerated = true;
+      title = llmResult.title;
+      body = llmResult.body;
+    }
+  }
+
+  if (!coachingGenerated) {
+    title =
+      interestLevel === "hot"
+        ? `${businessName} sounds hot. Lock the next step now`
+        : nextStep
+          ? `Your ${businessName} voice note already named the next move`
+          : objections.length > 0
+            ? `Handle ${businessName}'s objections while the visit is fresh`
+            : `Turn your ${businessName} voice note into a concrete next step`;
+
+    const lines = [
+      `The transcription came back ${interestLevel}.`,
+      summary ? `Summary: ${summary}` : "",
+      nextStep ? `Next step mentioned: ${nextStep}` : "",
+      followUpItems.length > 0 ? `Follow-ups captured: ${followUpItems.join("; ")}` : "",
+      objections.length > 0 ? `Objections to handle: ${objections.join("; ")}` : "",
+      contactInfo ? `Contact detail captured: ${contactInfo}` : "",
+      callbackMissing
+        ? "You still do not have a callback date on the visit. Put one on the calendar before this sits in notes only."
+        : "Now convert the note into a concrete action while the visit is still fresh.",
+      coachingCtx?.profile ? `Coaching profile: ${coachingCtx.profile.name}` : "",
+    ].filter(Boolean);
+
+    body = lines.join("\n\n");
+  }
 
   const baseData: Record<string, unknown> = {
     eventId: envelope.eventId,
@@ -241,13 +273,14 @@ async function postMediaCoaching(client: HermesClient, agentRunId: number, envel
     contactInfo: contactInfo || null,
     callbackMissing,
     sourceEventType: envelope.eventType,
+    coachingGenerated,
   };
 
   await client.postSuggestion({
     agentRunId,
     type: "coaching",
     title,
-    body: lines.join("\n\n"),
+    body,
     businessId,
     repId,
     priority: ["hot", "warm"].includes(interestLevel) ? "high" : "normal",

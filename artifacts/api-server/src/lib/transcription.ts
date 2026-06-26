@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { db, mediaTable } from "@workspace/db";
+import { db, mediaTable, visitsTable } from "@workspace/db";
 import { logger } from "./logger";
 import { logEvent } from "./events";
 import { downloadObjectBuffer } from "./objectStorage";
+import { resolveCoachingContext } from "./coaching-context";
 
 const OPENAI_BASE = "https://api.openai.com/v1";
 const WHISPER_MODEL = "whisper-1";
@@ -23,6 +24,73 @@ function getApiKey(): string | null {
 
 export function isTranscriptionConfigured(): boolean {
   return getApiKey() !== null;
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isPlainTextTranscriptFile(opts: { filename?: string | null; mimeType?: string | null }): boolean {
+  const filename = opts.filename?.toLowerCase() ?? "";
+  const mimeType = opts.mimeType?.toLowerCase() ?? "";
+  return mimeType.startsWith("text/") || filename.endsWith(".txt");
+}
+
+function bufferToTranscriptText(buffer: Buffer): string {
+  return buffer.toString("utf8").replace(/^\uFEFF/, "").trim();
+}
+
+async function getVisitMeta(visitId: number | null) {
+  if (!visitId) return null;
+  return (
+    await db
+      .select({ repId: visitsTable.repId, businessId: visitsTable.businessId })
+      .from(visitsTable)
+      .where(eq(visitsTable.id, visitId))
+  )[0] ?? null;
+}
+
+async function writeTranscriptResult(opts: {
+  mediaId: number;
+  visitId: number | null;
+  transcript: string;
+  structured: StructuredNote | null;
+  transcriptionError: string | null;
+  source: "audio" | "text";
+}) {
+  const visitMeta = await getVisitMeta(opts.visitId);
+
+  await db
+    .update(mediaTable)
+    .set({
+      transcript: opts.transcript,
+      aiStructured: opts.structured,
+      transcriptionStatus: "done",
+      transcriptionError: opts.transcriptionError,
+    })
+    .where(eq(mediaTable.id, opts.mediaId));
+
+  await logEvent({
+    type: "media.transcribed",
+    entityType: "media",
+    entityId: opts.mediaId,
+    businessId: visitMeta?.businessId ?? null,
+    visitId: opts.visitId,
+    repId: visitMeta?.repId ?? null,
+    payload: {
+      source: opts.source,
+      summary: opts.structured?.summary,
+      interestLevel: opts.structured?.interestLevel,
+      objections: opts.structured?.objections ?? [],
+      followUpItems: opts.structured?.followUpItems ?? [],
+      nextStep: opts.structured?.nextStep,
+      contactInfo: opts.structured?.contactInfo,
+      objectionCount: opts.structured?.objections.length ?? 0,
+      followUpCount: opts.structured?.followUpItems.length ?? 0,
+      transcriptChars: opts.transcript.length,
+      transcriptionError: opts.transcriptionError,
+    },
+  });
 }
 
 async function transcribeAudio(
@@ -60,7 +128,10 @@ const STRUCTURING_PROMPT = `You analyze transcripts of voice notes that a door-t
   "nextStep": "the single most important next action, or omit"
 }`;
 
-async function structureTranscript(transcript: string): Promise<StructuredNote | null> {
+async function structureTranscript(
+  transcript: string,
+  systemPrompt: string = STRUCTURING_PROMPT,
+): Promise<StructuredNote | null> {
   if (!transcript.trim()) return null;
 
   const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
@@ -73,7 +144,7 @@ async function structureTranscript(transcript: string): Promise<StructuredNote |
       model: STRUCTURING_MODEL,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: STRUCTURING_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: transcript },
       ],
       temperature: 0.2,
@@ -100,6 +171,53 @@ async function structureTranscript(transcript: string): Promise<StructuredNote |
     ...(parsed.contactInfo ? { contactInfo: parsed.contactInfo } : {}),
     ...(parsed.nextStep ? { nextStep: parsed.nextStep } : {}),
   };
+}
+
+async function buildStructuredTranscript(
+  transcript: string,
+  repId?: string | null,
+): Promise<{
+  structured: StructuredNote | null;
+  transcriptionError: string | null;
+}> {
+  if (!transcript.trim()) {
+    return {
+      structured: null,
+      transcriptionError: "Transcript file was empty",
+    };
+  }
+
+  if (!isTranscriptionConfigured()) {
+    return {
+      structured: null,
+      transcriptionError: "AI summary not configured (OPENAI_API_KEY missing)",
+    };
+  }
+
+  // Resolve coaching context to enrich the system prompt with profile-specific
+  // transcript instructions (e.g., sharper buyer-stage labels for HVAC).
+  // Graceful fallback: if resolution fails, use the default prompt unchanged.
+  let systemPrompt = STRUCTURING_PROMPT;
+  if (repId) {
+    try {
+      const ctx = await resolveCoachingContext(repId);
+      if (ctx.compiled.transcript) {
+        systemPrompt = `${ctx.compiled.transcript}\n\n${STRUCTURING_PROMPT}`;
+      }
+    } catch {
+      // Swallow: use default structuring prompt
+    }
+  }
+
+  try {
+    const structured = await structureTranscript(transcript, systemPrompt);
+    return { structured, transcriptionError: null };
+  } catch (err) {
+    return {
+      structured: null,
+      transcriptionError: getErrorMessage(err).slice(0, 500),
+    };
+  }
 }
 
 /**
@@ -136,34 +254,24 @@ export async function processMediaTranscription(
     const mimeType = audio?.mimeType ?? media.mimeType ?? "audio/webm";
 
     const transcript = await transcribeAudio(buffer, filename, mimeType);
-    const structured = await structureTranscript(transcript);
+    const visitMeta = await getVisitMeta(media.visitId);
+    const { structured, transcriptionError } = await buildStructuredTranscript(
+      transcript,
+      visitMeta?.repId,
+    );
 
-    await db
-      .update(mediaTable)
-      .set({
-        transcript,
-        aiStructured: structured,
-        transcriptionStatus: "done",
-        transcriptionError: null,
-      })
-      .where(eq(mediaTable.id, mediaId));
-
-    await logEvent({
-      type: "media.transcribed",
-      entityType: "media",
-      entityId: mediaId,
+    await writeTranscriptResult({
+      mediaId,
       visitId: media.visitId,
-      payload: {
-        interestLevel: structured?.interestLevel,
-        objectionCount: structured?.objections.length ?? 0,
-        followUpCount: structured?.followUpItems.length ?? 0,
-        transcriptChars: transcript.length,
-      },
+      transcript,
+      structured,
+      transcriptionError,
+      source: "audio",
     });
 
     logger.info({ mediaId }, "Transcription complete");
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = getErrorMessage(err);
     logger.error({ err, mediaId }, "Transcription failed");
     await db
       .update(mediaTable)
@@ -171,4 +279,57 @@ export async function processMediaTranscription(
       .where(eq(mediaTable.id, mediaId))
       .catch(() => undefined);
   }
+}
+
+export async function processTextTranscriptMedia(
+  mediaId: number,
+  transcriptText?: string,
+): Promise<void> {
+  try {
+    const [media] = await db.select().from(mediaTable).where(eq(mediaTable.id, mediaId));
+    if (!media) return;
+
+    await db
+      .update(mediaTable)
+      .set({ transcriptionStatus: "processing", transcriptionError: null })
+      .where(eq(mediaTable.id, mediaId));
+
+    if (!isPlainTextTranscriptFile({ filename: media.filename, mimeType: media.mimeType })) {
+      await db
+        .update(mediaTable)
+        .set({ transcriptionStatus: "error", transcriptionError: "This media item is not a plain-text transcript" })
+        .where(eq(mediaTable.id, mediaId));
+      return;
+    }
+
+    const transcript = transcriptText ?? bufferToTranscriptText(await downloadObjectBuffer(media.url));
+    const visitMeta = await getVisitMeta(media.visitId);
+    const { structured, transcriptionError } = await buildStructuredTranscript(
+      transcript,
+      visitMeta?.repId,
+    );
+
+    await writeTranscriptResult({
+      mediaId,
+      visitId: media.visitId,
+      transcript,
+      structured,
+      transcriptionError,
+      source: "text",
+    });
+
+    logger.info({ mediaId }, "Text transcript ingestion complete");
+  } catch (err) {
+    const message = getErrorMessage(err);
+    logger.error({ err, mediaId }, "Text transcript ingestion failed");
+    await db
+      .update(mediaTable)
+      .set({ transcriptionStatus: "error", transcriptionError: message.slice(0, 500) })
+      .where(eq(mediaTable.id, mediaId))
+      .catch(() => undefined);
+  }
+}
+
+export function shouldTreatAsTranscriptDocument(opts: { filename?: string | null; mimeType?: string | null; type?: string | null }): boolean {
+  return opts.type === "document" && isPlainTextTranscriptFile(opts);
 }
