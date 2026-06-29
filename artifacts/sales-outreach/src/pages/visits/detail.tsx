@@ -78,9 +78,13 @@ export default function VisitDetail() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href={`/businesses/${visit.businessId}`} className="hover:text-foreground flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" /> Back to Business
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <Link href="/visits" className="hover:text-foreground flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> Field Notes
+        </Link>
+        <span>/</span>
+        <Link href={`/businesses/${visit.businessId}`} className="hover:text-foreground">
+          {visit.businessName}
         </Link>
       </div>
 
@@ -144,7 +148,7 @@ export default function VisitDetail() {
 
           {/* AI transcriptions for voice media */}
           {visit.media
-            ?.filter((m) => m.type === "voice_note" || m.type === "interview")
+            ?.filter((m) => m.transcriptionStatus !== "none" || Boolean(m.transcript) || Boolean(m.aiStructured))
             .map((m) => (
               <TranscriptionCard key={`transcription-${m.id}`} media={m} />
             ))}
@@ -205,7 +209,7 @@ export default function VisitDetail() {
                 className="hidden"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
-                accept="image/*,audio/*,video/*,.pdf"
+                accept="image/*,audio/*,video/*,.pdf,.txt,.md,.rtf,.doc,.docx,text/*"
               />
               <Button 
                 variant="outline" 
