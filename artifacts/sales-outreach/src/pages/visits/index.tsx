@@ -1,82 +1,150 @@
-import { useListVisits, getListVisitsQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
+import { customFetch } from "@workspace/api-client-react/custom-fetch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, User, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Calendar, Clock, ChevronRight, Search } from "lucide-react";
 import { Link } from "wouter";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
+import { useState, useMemo } from "react";
+
+type GroupedVisit = {
+  businessId: number;
+  businessName: string;
+  businessAddress: string | null;
+  visitCount: number;
+  lastVisitAt: string;
+  lastOutcome: string;
+  nextActionDate: string | null;
+  latestSummary: string | null;
+  latestVisitId: number;
+};
+
+function urgencyRank(g: GroupedVisit): number {
+  if (g.nextActionDate) {
+    const days = differenceInDays(parseISO(g.nextActionDate), new Date());
+    if (days < 0) return 0; // overdue callback
+    if (days <= 3) return 1; // due soon
+    if (days <= 7) return 2; // this week
+    return 3; // scheduled later
+  }
+  if (g.lastOutcome === "follow_up_needed") return 4;
+  if (g.lastOutcome === "positive") return 5;
+  return 6;
+}
 
 const OUTCOME_STYLES: Record<string, string> = {
-  positive: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  neutral: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
-  negative: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-  follow_up_needed: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  positive: "bg-green-500/15 text-green-600 dark:text-green-400",
+  negative: "bg-red-500/15 text-red-600 dark:text-red-400",
+  follow_up_needed: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  neutral: "bg-muted text-muted-foreground",
 };
 
 export default function VisitsList() {
-  const { data: visits, isLoading } = useListVisits({ query: { queryKey: getListVisitsQueryKey() } });
+  const [search, setSearch] = useState("");
+
+  const { data: groups, isLoading } = useQuery({
+    queryKey: ["visits-grouped"],
+    queryFn: () => customFetch<GroupedVisit[]>("/api/visits/grouped"),
+  });
+
+  const filtered = useMemo(() => {
+    if (!groups) return [];
+    const sorted = [...groups].sort(
+      (a, b) => urgencyRank(a) - urgencyRank(b) || new Date(b.lastVisitAt).getTime() - new Date(a.lastVisitAt).getTime(),
+    );
+    if (!search.trim()) return sorted;
+    return sorted.filter((g) =>
+      g.businessName.toLowerCase().includes(search.toLowerCase()),
+    );
+  }, [groups, search]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Field Notes</h1>
-        <p className="text-sm text-muted-foreground">Log of all prospecting visits.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Field Notes</h1>
+          <p className="text-sm text-muted-foreground">
+            All prospects sorted by what needs attention next.
+          </p>
+        </div>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search businesses..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 max-w-sm"
+        />
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse h-24" />
+            <Card key={i} className="animate-pulse h-20" />
           ))}
         </div>
-      ) : visits?.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed border-border">
-          No visits recorded. Start visiting businesses to build your field notes.
+          {search ? "No businesses match your search." : "No visits yet. Start visiting prospects to build your field notes."}
         </div>
       ) : (
-        <div className="space-y-3">
-          {visits?.map((visit) => (
-            <Link key={visit.id} href={`/visits/${visit.id}`}>
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer border-l-4" style={{ 
-                borderLeftColor: 
-                  visit.outcome === 'positive' ? 'hsl(var(--primary))' : 
-                  visit.outcome === 'negative' ? 'hsl(var(--destructive))' : 
-                  visit.outcome === 'follow_up_needed' ? 'hsl(var(--accent))' : 
-                  'hsl(var(--muted-foreground))'
-              }}>
-                <CardContent className="p-4 flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg">{visit.businessName}</h3>
-                      <Badge variant="outline" className={`text-[10px] uppercase border ${OUTCOME_STYLES[visit.outcome]}`}>
-                        {visit.outcome.replace(/_/g, " ")}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex flex-wrap text-sm text-muted-foreground gap-4">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>{format(parseISO(visit.visitedAt), "MMM d, h:mm a")}</span>
+        <div className="space-y-2">
+          {filtered.map((g) => {
+            const days = g.nextActionDate
+              ? differenceInDays(parseISO(g.nextActionDate), new Date())
+              : null;
+            const overdue = days !== null && days < 0;
+            const dueSoon = days !== null && days >= 0 && days <= 3;
+
+            return (
+              <Link key={g.businessId} href={`/visits/${g.latestVisitId}`}>
+                <Card
+                  className={`hover:border-primary/50 transition-colors cursor-pointer ${
+                    overdue ? "border-l-4 border-l-destructive" : dueSoon ? "border-l-4 border-l-accent" : ""
+                  }`}
+                >
+                  <CardContent className="p-4 flex items-center justify-between gap-4">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold truncate">{g.businessName}</h3>
+                        <Badge variant="outline" className={`text-[10px] uppercase shrink-0 ${OUTCOME_STYLES[g.lastOutcome] ?? ""}`}>
+                          {g.lastOutcome.replace(/_/g, " ")}
+                        </Badge>
+                        {g.visitCount > 1 && (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {g.visitCount} visits
+                          </span>
+                        )}
                       </div>
-                      {visit.contactName && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-3.5 w-3.5" />
-                          <span>{visit.contactName}</span>
-                        </div>
+                      {g.latestSummary && (
+                        <p className="text-xs text-muted-foreground truncate">{g.latestSummary}</p>
                       )}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {format(parseISO(g.lastVisitAt), "MMM d")}
+                        </span>
+                        {g.nextActionDate && (
+                          <span className={`flex items-center gap-1 font-medium ${overdue ? "text-destructive" : dueSoon ? "text-accent" : ""}`}>
+                            <Calendar className="h-3 w-3" />
+                            {overdue
+                              ? `${Math.abs(days!)}d overdue`
+                              : days === 0
+                                ? "Today"
+                                : `in ${days}d`}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex gap-3">
-                      <span>{visit.noteCount} notes</span>
-                      <span>{visit.mediaCount} media</span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 hidden sm:block" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
