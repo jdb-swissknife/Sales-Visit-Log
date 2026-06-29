@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell, Check, X, Sparkles, MapPin, Calendar, Lightbulb } from "lucide-react";
-import { useSuggestions, useUnreadCount, useUpdateSuggestionStatus, type Suggestion } from "@/hooks/use-suggestions";
+import { Link } from "wouter";
+import { useSuggestionStream, useSuggestions, useUnreadCount, useUpdateSuggestionStatus, type Suggestion } from "@/hooks/use-suggestions";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 
@@ -22,7 +23,7 @@ const PRIORITY_BADGE: Record<string, string> = {
   low: "opacity-50",
 };
 
-function SuggestionCard({ s, onAction }: { s: Suggestion; onAction: (id: number, status: Suggestion["status"]) => void }) {
+function SuggestionCard({ s, onAction, onNavigate }: { s: Suggestion; onAction: (id: number, status: Suggestion["status"]) => void; onNavigate: () => void }) {
   const meta = TYPE_META[s.type] ?? TYPE_META.other;
   const Icon = meta.icon;
   const dimmed = s.status === "dismissed" || s.status === "acted";
@@ -60,7 +61,7 @@ function SuggestionCard({ s, onAction }: { s: Suggestion; onAction: (id: number,
                 onClick={() => onAction(s.id, "acted")}
                 asChild
               >
-                <a href={s.actionUrl}>{s.actionLabel ?? "Act on it"}</a>
+                <Link href={s.actionUrl} onClick={onNavigate}>{s.actionLabel ?? "Act on it"}</Link>
               </Button>
             )}
             {!s.actionUrl && s.status === "unread" && (
@@ -85,6 +86,7 @@ function SuggestionCard({ s, onAction }: { s: Suggestion; onAction: (id: number,
 }
 
 export function CoachingFeed() {
+  useSuggestionStream();
   const { data: suggestions, isLoading } = useSuggestions();
   const unread = useUnreadCount();
   const updateStatus = useUpdateSuggestionStatus();
@@ -133,7 +135,7 @@ export function CoachingFeed() {
             </div>
           )}
           {sorted.map((s) => (
-            <SuggestionCard key={s.id} s={s} onAction={(id, status) => updateStatus.mutate({ id, status })} />
+            <SuggestionCard key={s.id} s={s} onAction={(id, status) => updateStatus.mutate({ id, status })} onNavigate={() => setOpen(false)} />
           ))}
         </div>
       </SheetContent>
