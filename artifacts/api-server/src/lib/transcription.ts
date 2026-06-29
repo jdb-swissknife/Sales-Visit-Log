@@ -119,14 +119,19 @@ async function transcribeAudio(
   return data.text ?? "";
 }
 
-const STRUCTURING_PROMPT = `You analyze transcripts of voice notes that a door-to-door sales rep records right after a business visit. Extract structured data. Respond with JSON only, matching this shape:
+const STRUCTURING_PROMPT = `You analyze transcripts of voice notes that a door-to-door sales rep records right after a business visit. Extract structured data.
+
+Today's date is provided as context. When the rep mentions a date for a meeting, callback, appointment, or follow-up (e.g., "Jul 8th", "January 15", "next Friday", "the 23rd", "end of next week"), convert it to an ISO calendar date (YYYY-MM-DD). If the rep says "I set a meeting" or "scheduled a callback" but gives no date, set callbackDate to null.
+
+Respond with JSON only, matching this shape:
 {
   "summary": "1-2 sentence summary of the visit",
   "interestLevel": "hot" | "warm" | "cool" | "cold" | "unknown",
   "objections": ["each objection the prospect raised"],
   "followUpItems": ["each concrete follow-up action mentioned"],
   "contactInfo": "any names/phones/emails mentioned, or omit",
-  "nextStep": "the single most important next action, or omit"
+  "nextStep": "the single most important next action, or omit",
+  "callbackDate": "YYYY-MM-DD or null"
 }`;
 
 async function structureTranscript(
@@ -146,7 +151,7 @@ async function structureTranscript(
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: transcript },
+        { role: "user", content: `Today is ${new Date().toISOString().slice(0, 10)}.\n\n${transcript}` },
       ],
       temperature: 0.2,
     }),
@@ -171,6 +176,7 @@ async function structureTranscript(
     followUpItems: Array.isArray(parsed.followUpItems) ? parsed.followUpItems : [],
     ...(parsed.contactInfo ? { contactInfo: parsed.contactInfo } : {}),
     ...(parsed.nextStep ? { nextStep: parsed.nextStep } : {}),
+    ...(parsed.callbackDate ? { callbackDate: parsed.callbackDate } : {}),
   };
 }
 
