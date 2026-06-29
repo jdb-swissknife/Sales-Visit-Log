@@ -8,7 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Loader2, RefreshCw, AlertTriangle, Flame, ThermometerSun, ThermometerSnowflake, Snowflake, HelpCircle } from "lucide-react";
+import { Sparkles, Loader2, RefreshCw, AlertTriangle, Flame, ThermometerSun, ThermometerSnowflake, Snowflake, HelpCircle, Calendar } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
 const INTEREST_CONFIG: Record<string, { label: string; icon: typeof Flame; className: string }> = {
   hot: { label: "Hot lead", icon: Flame, className: "bg-red-500/15 text-red-600 dark:text-red-400" },
@@ -46,6 +47,13 @@ export function TranscriptionCard({ media }: { media: Media }) {
 
   const item = data ?? media;
   const status = item.transcriptionStatus;
+  const hasAiSummary = Boolean(
+    item.aiStructured?.summary ||
+    item.aiStructured?.nextStep ||
+    item.aiStructured?.contactInfo ||
+    item.aiStructured?.objections?.length ||
+    item.aiStructured?.followUpItems?.length,
+  );
 
   if (status === "none") return null;
 
@@ -54,7 +62,7 @@ export function TranscriptionCard({ media }: { media: Media }) {
       <Card className="border-dashed">
         <CardContent className="p-4 flex items-center gap-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          Transcribing voice note...
+          Processing transcript...
         </CardContent>
       </Card>
     );
@@ -97,9 +105,9 @@ export function TranscriptionCard({ media }: { media: Media }) {
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            AI Visit Summary
+            {hasAiSummary ? "AI Visit Summary" : "Transcript Loaded"}
           </span>
-          {ai && (
+          {ai && hasAiSummary && (
             <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${interest.className}`}>
               <InterestIcon className="h-3 w-3" />
               {interest.label}
@@ -107,12 +115,32 @@ export function TranscriptionCard({ media }: { media: Media }) {
           )}
         </div>
 
+        {!hasAiSummary && (
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Transcript attached and available below.
+          </p>
+        )}
+
+        {item.transcriptionError && (
+          <p className="text-xs text-muted-foreground">{item.transcriptionError}</p>
+        )}
+
         {ai?.summary && <p className="text-sm leading-relaxed">{ai.summary}</p>}
 
         {ai?.nextStep && (
           <div className="text-sm">
             <span className="font-medium">Next step: </span>
             <span className="text-muted-foreground">{ai.nextStep}</span>
+          </div>
+        )}
+
+        {ai?.callbackDate && (
+          <div className="flex items-center gap-2 text-sm bg-accent/10 rounded-md px-3 py-2">
+            <Calendar className="h-4 w-4 text-accent" />
+            <span className="font-medium">Callback scheduled: </span>
+            <span className="text-accent font-medium">
+              {format(parseISO(ai.callbackDate), "EEE, MMM d")}
+            </span>
           </div>
         )}
 
