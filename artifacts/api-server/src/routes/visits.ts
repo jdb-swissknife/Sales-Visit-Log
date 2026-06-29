@@ -118,6 +118,92 @@ router.post("/visits", async (req, res): Promise<void> => {
   );
 });
 
+// GET /api/visits/grouped - visits grouped by business for Field Notes
+router.get("/visits/grouped", async (req, res): Promise<void> => {
+  const conditions = [];
+  if (!canSeeAllReps(req.userRole) && req.userId) {
+    conditions.push(eq(visitsTable.repId, req.userId));
+  }
+
+  const rows = await db
+    .select({
+      visitId: visitsTable.id,
+      businessId: visitsTable.businessId,
+      businessName: businessesTable.name,
+      businessAddress: businessesTable.address,
+      visitedAt: visitsTable.visitedAt,
+      outcome: visitsTable.outcome,
+      nextActionDate: visitsTable.nextActionDate,
+      repId: visitsTable.repId,
+    })
+    .from(visitsTable)
+    .leftJoin(businessesTable, eq(visitsTable.businessId, businessesTable.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(sql`${visitsTable.visitedAt} DESC`);
+
+  // Fetch the latest AI summary per visit (one query)
+  const visitIds = rows.map((r) => r.visitId);
+  let summaryMap = new Map<number, string>();
+  if (visitIds.length > 0) {
+    const mediaRows = await db
+      .select({
+        visitId: mediaTable.visitId,
+        aiStructured: mediaTable.aiStructured,
+      })
+      .from(mediaTable)
+      .where(sql`${mediaTable.visitId} = ANY(${sql.raw(`ARRAY[${visitIds.join(",")}]::int[]`)})`);
+    for (const m of mediaRows) {
+      if (m.visitId && m.aiStructured && typeof m.aiStructured === "object") {
+        const s = (m.aiStructured as Record<string, unknown>).summary;
+        if (typeof s === "string" && s && !summaryMap.has(m.visitId)) {
+          summaryMap.set(m.visitId, s);
+        }
+      }
+    }
+  }
+
+  // Group by business (rows are already ordered newest-first)
+  const grouped = new Map<number, {
+    businessId: number;
+    businessName: string;
+    businessAddress: string | null;
+    visitCount: number;
+    lastVisitAt: string;
+    lastOutcome: string;
+    nextActionDate: string | null;
+    latestSummary: string | null;
+    latestVisitId: number;
+  }>();
+
+  for (const r of rows) {
+    const existing = grouped.get(r.businessId);
+    if (!existing) {
+      grouped.set(r.businessId, {
+        businessId: r.businessId,
+        businessName: r.businessName ?? `Business #${r.businessId}`,
+        businessAddress: r.businessAddress ?? null,
+        visitCount: 1,
+        lastVisitAt: r.visitedAt,
+        lastOutcome: r.outcome,
+        nextActionDate: r.nextActionDate ? r.nextActionDate.toISOString() : null,
+        latestSummary: summaryMap.get(r.visitId) ?? null,
+        latestVisitId: r.visitId,
+      });
+    } else {
+      existing.visitCount++;
+      // Keep the earliest upcoming callback date
+      if (r.nextActionDate) {
+        const iso = r.nextActionDate.toISOString();
+        if (!existing.nextActionDate || iso < existing.nextActionDate) {
+          existing.nextActionDate = iso;
+        }
+      }
+    }
+  }
+
+  res.json(Array.from(grouped.values()));
+});
+
 router.get("/visits/:id", async (req, res): Promise<void> => {
   const params = GetVisitParams.safeParse(req.params);
   if (!params.success) {
@@ -185,7 +271,9 @@ router.put("/visits/:id", async (req, res): Promise<void> => {
   if (parsed.data.outcome != null) updateData.outcome = parsed.data.outcome;
   if (parsed.data.contactName != null) updateData.contactName = parsed.data.contactName;
   if (parsed.data.contactPhone != null) updateData.contactPhone = parsed.data.contactPhone;
-  if (parsed.data.nextActionDate != null) updateData.nextActionDate = new Date(parsed.data.nextActionDate);
+  if (Object.prototype.hasOwnProperty.call(parsed.data, "nextActionDate")) {
+    updateData.nextActionDate = parsed.data.nextActionDate ? new Date(parsed.data.nextActionDate) : null;
+  }
 
   const [updated] = await db
     .update(visitsTable)
