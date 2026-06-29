@@ -71,6 +71,17 @@ async function writeTranscriptResult(opts: {
     })
     .where(eq(mediaTable.id, opts.mediaId));
 
+  // If AI extracted a callback date, set it on the visit.
+  if (opts.structured?.callbackDate && opts.visitId) {
+    const parsed = new Date(opts.structured.callbackDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      await db
+        .update(visitsTable)
+        .set({ nextActionDate: parsed })
+        .where(eq(visitsTable.id, opts.visitId));
+    }
+  }
+
   await logEvent({
     type: "media.transcribed",
     entityType: "media",
@@ -86,6 +97,7 @@ async function writeTranscriptResult(opts: {
       followUpItems: opts.structured?.followUpItems ?? [],
       nextStep: opts.structured?.nextStep,
       contactInfo: opts.structured?.contactInfo,
+      callbackDate: opts.structured?.callbackDate,
       objectionCount: opts.structured?.objections.length ?? 0,
       followUpCount: opts.structured?.followUpItems.length ?? 0,
       transcriptChars: opts.transcript.length,
