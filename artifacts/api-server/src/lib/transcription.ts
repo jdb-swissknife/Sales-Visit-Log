@@ -16,6 +16,7 @@ export interface StructuredNote {
   followUpItems: string[];
   contactInfo?: string;
   nextStep?: string;
+  callbackDate?: string; // ISO date (YYYY-MM-DD) when a meeting/callback/follow-up is mentioned
 }
 
 function getApiKey(): string | null {
