@@ -6,7 +6,7 @@ import { Bell, Check, X, Sparkles, MapPin, Calendar, Lightbulb } from "lucide-re
 import { Link } from "wouter";
 import { useSuggestionStream, useSuggestions, useUnreadCount, useUpdateSuggestionStatus, type Suggestion } from "@/hooks/use-suggestions";
 import { formatDistanceToNow } from "date-fns";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const TYPE_META: Record<string, { icon: typeof Sparkles; color: string; label: string }> = {
   coaching: { icon: Lightbulb, color: "text-violet-500", label: "Coaching" },
@@ -85,18 +85,51 @@ function SuggestionCard({ s, onAction, onNavigate }: { s: Suggestion; onAction: 
   );
 }
 
+const GROUP_ORDER = ["coaching", "callback_reminder", "nearby_prospect", "debrief", "other"];
+
 export function CoachingFeed() {
   useSuggestionStream();
   const { data: suggestions, isLoading } = useSuggestions();
   const unread = useUnreadCount();
   const updateStatus = useUpdateSuggestionStatus();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"active" | "history">("active");
 
-  const sorted = [...(suggestions ?? [])].sort((a, b) => {
-    const statusOrder = { unread: 0, read: 1, acted: 2, dismissed: 3 };
-    if (statusOrder[a.status] !== statusOrder[b.status]) return statusOrder[a.status] - statusOrder[b.status];
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  const now = Date.now();
+
+  const isActive = useMemo(() => {
+    return (s: Suggestion) => {
+      if (s.status === "unread" || s.status === "read") return true;
+      const ageHours = (now - new Date(s.createdAt).getTime()) / 3_600_000;
+      return ageHours < 24;
+    };
+  }, [now]);
+
+  const filtered = useMemo(() => {
+    const sorted = [...(suggestions ?? [])].sort((a, b) => {
+      const statusOrder = { unread: 0, read: 1, acted: 2, dismissed: 3 };
+      if (statusOrder[a.status] !== statusOrder[b.status]) return statusOrder[a.status] - statusOrder[b.status];
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    if (tab === "active") return sorted.filter(isActive);
+    return sorted;
+  }, [suggestions, tab, isActive]);
+
+  const activeCount = useMemo(
+    () => (suggestions ?? []).filter(isActive).length,
+    [suggestions, isActive],
+  );
+
+  // Group by type within the active tab
+  const grouped = useMemo(() => {
+    const groups: Record<string, Suggestion[]> = {};
+    for (const s of filtered) {
+      const key = s.type;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    }
+    return groups;
+  }, [filtered]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -125,18 +158,51 @@ export function CoachingFeed() {
           )}
         </SheetHeader>
 
-        <div className="space-y-3 mt-4">
+        <div className="flex gap-1 mt-4 mb-3">
+          <Button
+            size="sm"
+            variant={tab === "active" ? "default" : "ghost"}
+            onClick={() => setTab("active")}
+            className="text-xs"
+          >
+            Active {activeCount > 0 && <Badge variant="secondary" className="ml-1 text-[10px]">{activeCount}</Badge>}
+          </Button>
+          <Button
+            size="sm"
+            variant={tab === "history" ? "default" : "ghost"}
+            onClick={() => setTab("history")}
+            className="text-xs"
+          >
+            History
+          </Button>
+        </div>
+
+        <div className="space-y-3">
           {isLoading && <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>}
-          {!isLoading && sorted.length === 0 && (
+          {!isLoading && filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No coaching suggestions yet.</p>
-              <p className="text-xs mt-1">Suggestions appear as you log visits and notes.</p>
+              <p className="text-sm">{tab === "active" ? "No active suggestions." : "No history yet."}</p>
+              {tab === "active" && <p className="text-xs mt-1">Suggestions appear as you log visits and notes.</p>}
             </div>
           )}
-          {sorted.map((s) => (
-            <SuggestionCard key={s.id} s={s} onAction={(id, status) => updateStatus.mutate({ id, status })} onNavigate={() => setOpen(false)} />
-          ))}
+
+          {tab === "active"
+            ? GROUP_ORDER.filter((g) => grouped[g]?.length).map((type) => (
+                <div key={type} className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">
+                    {TYPE_META[type]?.label ?? type}
+                    <Badge variant="secondary" className="text-[10px]">{grouped[type].length}</Badge>
+                  </div>
+                  {grouped[type].map((s) => (
+                    <SuggestionCard key={s.id} s={s} onAction={(id, status) => updateStatus.mutate({ id, status })} onNavigate={() => setOpen(false)} />
+                  ))}
+                </div>
+              ))
+            : filtered.map((s) => (
+                <SuggestionCard key={s.id} s={s} onAction={(id, status) => updateStatus.mutate({ id, status })} onNavigate={() => setOpen(false)} />
+              ))
+          }
         </div>
       </SheetContent>
     </Sheet>
