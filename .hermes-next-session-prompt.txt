@@ -1,104 +1,119 @@
-# SVL Next Session — Coaching KB + Plaud Integration
+# SVL Next Session — Bug Testing After Coaching + Navigation Overhaul
 
-## Date: 2026-06-26
-## Status: Awaiting Erica buy-in before wiring Plaud cron + coaching hook
+## Date: 2026-06-29
+## Status: All 13 tasks deployed. Ready for user testing at svl.mindvaultstudio.net.
 
 ---
 
-## WHAT SHIPPED (committed)
+## WHAT SHIPPED THIS SESSION
 
-### Commit b7746b8 — Coaching KB Slice 1 (3 deliverables)
+5 work streams, 13 tasks committed. Full plan at:
+`/root/projects/sales-visit-log/docs/plans/2026-06-28-ai-coaching-and-navigation-overhaul.md`
 
-**A. LLM Coaching (hermes-agent)**
-- `artifacts/hermes-agent/src/llm.ts` — OpenAI Chat Completions helper, graceful fallback
-- `artifacts/hermes-agent/src/run-webhook.ts` — LLM coaching attempt with template fallback
-- `artifacts/hermes-agent/tests/llm-coaching.test.ts` — 13 tests, all passing
+### 1. AI Date Extraction from Transcripts (Tasks 1-5)
+- New `callbackDate` field on `StructuredNote` (ISO date YYYY-MM-DD)
+- AI prompt now parses natural language dates ("Jul 8th", "next Friday", "the 23rd") into ISO format
+- Today's date is injected into the LLM message as context
+- Auto-populates `visit.nextActionDate` when a callback date is extracted
+- Shows a "Callback scheduled" badge with calendar icon in the TranscriptionCard
+- 7 unit tests in `artifacts/api-server/tests/callback-date.test.ts` — all passing
+- Files changed:
+  - `artifacts/api-server/src/lib/transcription.ts` (interface, prompt, parsing, visit update, event payload)
+  - `artifacts/sales-outreach/src/components/transcription-card.tsx` (UI badge)
+  - `lib/api-zod/src/generated/types/structuredNote.ts` (generated type)
+  - `lib/api-client-react/src/generated/api.schemas.ts` + `.d.ts` (generated type)
 
-**B. Profile-Aware Transcript Structuring (api-server)**
-- `artifacts/api-server/src/lib/transcription.ts` — resolves coaching context, injects compiled.transcript instructions
-- buildStructuredTranscript accepts repId, falls back gracefully
+### 2. Navigation Fixes (Tasks 6-8)
+- Bell feed action buttons: switched from `<a href>` (full page reload) to wouter `<Link>` (client-side nav)
+- Sheet panel now closes on navigate via `onNavigate` callback
+- Visit detail page: breadcrumb changed to "Field Notes / Business Name" (was just "Back to Business")
+- Files changed:
+  - `artifacts/sales-outreach/src/components/coaching-feed.tsx`
+  - `artifacts/sales-outreach/src/pages/visits/detail.tsx`
 
-**C. Coaching Admin CRUD API (api-server)**
-- `artifacts/api-server/src/routes/coaching.ts` — full CRUD for profiles + knowledge docs
-- `artifacts/api-server/src/routes/index.ts` — registered behind requireAuth
-- `artifacts/api-server/tests/coaching-admin.test.ts` — 14 DB-gated tests, all passing
+### 3. Field Notes Redesign (Tasks 9-10)
+- New backend endpoint: `GET /api/visits/grouped` — visits grouped by business with urgency metadata
+  - Returns: businessId, name, address, visitCount, lastVisitAt, lastOutcome, nextActionDate, latestSummary, latestVisitId
+  - Located in `artifacts/api-server/src/routes/visits.ts` (mounted BEFORE `/visits/:id`)
+- Field Notes page (`/visits`) fully rewritten:
+  - Business-grouped cards instead of flat visit list
+  - Sorted by urgency: overdue callbacks first, due soon next, follow-ups needed, then recently visited
+  - Search bar to filter by business name
+  - Left-border color coding: red = overdue, accent = due soon (<=3 days)
+  - Each card shows: business name, outcome badge, visit count, AI summary snippet, last visit date, callback countdown
+- Files changed:
+  - `artifacts/api-server/src/routes/visits.ts` (new endpoint)
+  - `artifacts/sales-outreach/src/pages/visits/index.tsx` (full rewrite)
 
-### Commit c454ed2 — Frontend Dev Bypass
-- `App.tsx` — DEV_BYPASS_AUTH skips Clerk in vite dev
-- `vite.config.ts` — proxy injects x-test-user-id=test-owner
-
-### Pre-existing (from prior sessions)
-- `artifacts/plaud-sync/` — Complete Plaud MCP sync engine (10 files, 2 test suites)
-  - MCP client (JSON-RPC over stdio to @plaud-ai/mcp)
-  - Business matching (Levenshtein fuzzy)
-  - Sync orchestration (pull recordings -> structure -> match -> create visit+media)
-  - CLI runner (run-sync.ts, one-shot, env-configured per-rep)
-  - SVL API client
+### 4. Bell Feed Lifecycle (Tasks 11-12)
+- Two tabs: Active (unread + acted/dismissed within 24h) and History (everything)
+- Active tab groups suggestions by type with header labels and counts (Coaching, Callback, Nearby, Debrief)
+- 24h auto-archive: acted/dismissed cards disappear from Active after 24h
+- Files changed:
+  - `artifacts/sales-outreach/src/components/coaching-feed.tsx`
 
 ---
 
 ## WHAT'S LIVE RIGHT NOW
 
-- API server: localhost:8090 (rebuilt, running)
-- Frontend dev: localhost:3000 (vite dev, auth bypassed as test-owner)
-- DB: sales_visit_log_dev with seed data
-  - 106 businesses, 13 visits, 5 media (visit 4 richest), 14 coaching suggestions
-  - 1 global coaching profile + 2 knowledge docs (HVAC Atlanta Playbook, Straight Line Objection Library)
+- Frontend: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs -> :8090 API)
+- API server: localhost:8090 (rebuilt, running, health 200)
+- Proxy server: localhost:8097 (running)
+- DB: sales_visit_log_dev (same seed data as before)
+- Both servers restarted fresh this session
 
-### Rep UX test flow:
-1. http://localhost:3000/visits/4 — AI summary, warm badge, objections, follow-ups, transcript card
-2. Bell icon (top-right) — 13 coaching suggestions (coaching/callback/nearby/debrief types)
-3. http://localhost:3000/ — Map-first home screen
-4. http://localhost:3000/routes — 4-day route plan
-5. http://localhost:3000/businesses/3 — Business detail with visit history
+### Restart commands if needed:
+```
+# Kill
+ps aux | grep -E "proxy-server|api-server/dist" | grep -v grep | awk '{print $2}' | xargs -r kill
 
----
+# API server
+cd /root/projects/sales-visit-log && nohup bash -lic 'set -a && . .env && set +a && PORT=8090 node artifacts/api-server/dist/index.mjs' >> /tmp/svl-api-server.log 2>&1 &
 
-## WHAT REMAINS (after Erica says go)
+# Proxy server
+cd /root/projects/sales-visit-log && nohup env PORT=8097 API_TARGET=http://127.0.0.1:8090 node artifacts/proxy-server.mjs >> /tmp/svl-server.log 2>&1 &
+```
 
-### Plaud wiring (2-3 hours)
-1. **OAuth token** — Run `npx -y @plaud-ai/mcp@latest install` with Erica's Plaud account to generate token
-2. **Cron job** — Wire run-sync.ts as recurring cron (every 5-10 min)
-3. **Coaching hook** — Plaud sync creates media with transcriptionStatus=done but doesn't trigger coaching suggestion generation. Either:
-   - (a) plaud-sync calls the hermes-agent webhook after creating media, OR
-   - (b) plaud-sync calls coaching-context endpoint directly before creating the suggestion
-
-### Known issues
-- Visit 4 has 2 transcription cards showing stale 401 errors (old OpenAI key on re-structuring attempts)
-- api-server has 1 pre-existing test failure in agent-coaching-context test (seeded global/default profile conflict)
-- Vision API (nous portal) is down — screenshots captured but can't be analyzed
+### Health checks:
+```
+curl -sS -o /dev/null -w "proxy: %{http_code}\n" http://127.0.0.1:8097/health
+curl -sS -o /dev/null -w "api: %{http_code}\n" http://127.0.0.1:8090/api/healthz
+```
 
 ---
 
-## UNCOMMITTED WORK (not staged)
-- Various modified files in api-server (objectStorage, webhooks, media, suggestions, visits routes)
-- proxy-server.mjs, hermes-agent/package.json
-- Generated API client types (lib/api-zod, lib/api-client-react)
-- Frontend components (coaching-feed, transcription-card, use-suggestions, detail page)
-- docs/plans/ and docs/playbooks/ (planning docs for Erica meeting)
-- .local-object-storage/ (test uploads)
+## TEST THESE FEATURES
+
+1. Field Notes page (/visits) — should show business-grouped cards, urgency-sorted, with search
+2. Bell icon (top-right) — Active/History tabs, type grouping in Active tab
+3. Bell feed action buttons — should navigate without full page reload, sheet should close
+4. Visit detail — breadcrumb "Field Notes / Business Name"
+5. TranscriptionCard — callbackDate badge (only shows if AI extracted a date from transcript)
+6. New voice note with a date mention ("set a meeting for July 15th") — should auto-extract callbackDate and populate nextActionDate
 
 ---
 
-## KEY DECISION POINT FOR ERICA MEETING
+## KNOWN PRE-EXISTING ISSUES (not from this session)
 
-**Recommendation**: Plaud notetaker pin auto-records, auto-syncs to SVL. Rep workflow becomes:
-1. Walk in, press record on Plaud pin
-2. Have conversation
-3. Pin the business address on the way out (or Plaud tags it)
-4. Everything else is automatic: transcript pulled, structured, business matched, visit created, coaching generated
+- Pre-existing typecheck error in `lib/api-client-react/src/generated/api.ts` line 1514 (FormData.append null) — unrelated to this session's work
+- Pre-existing typecheck errors in api-server (clerk-auth.ts, webhooks.ts, coaching.ts) — unrelated
+- Visit 4 had stale 401 transcription errors from old OpenAI key (may still be visible)
 
-No app switching. No manual uploads. No typing.
+---
 
-**What Erica needs to decide**:
-- Get a Plaud Note Pin ($159) or use Plaud app on phone
-- One-time OAuth setup (5 min, we do it together)
-- Whether she wants per-business tagging or auto-match from transcript
+## GIT STATE
+
+All work committed. Last commit: `37efa31` — "fix: add callbackDate to generated types, fix visitedAt ISO serialization, rebuild .d.ts"
+
+To see all commits from this session:
+```
+git log --oneline --since="2026-06-29T00:00:00" 
+```
 
 ---
 
 ## ENVIRONMENT
 - VPS: Hermes kanban + SVL (Go API + Next/Vite frontend)
 - DB: postgres sales_visit_log_dev
-- Prod: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs)
-- API: :8090 (dev), Clerk auth with x-test-user-id bypass in dev
+- Prod: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs -> :8090 API)
+- Project root: /root/projects/sales-visit-log

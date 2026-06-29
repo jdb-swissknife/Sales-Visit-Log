@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell, Check, X, Sparkles, MapPin, Calendar, Lightbulb } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { useSuggestionStream, useSuggestions, useUnreadCount, useUpdateSuggestionStatus, type Suggestion } from "@/hooks/use-suggestions";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useMemo } from "react";
@@ -27,9 +27,22 @@ function SuggestionCard({ s, onAction, onNavigate }: { s: Suggestion; onAction: 
   const meta = TYPE_META[s.type] ?? TYPE_META.other;
   const Icon = meta.icon;
   const dimmed = s.status === "dismissed" || s.status === "acted";
+  const isPending = s.status !== "acted" && s.status !== "dismissed";
+  const [, setLocation] = useLocation();
+
+  const handleClick = () => {
+    if (s.actionUrl) {
+      if (isPending) onAction(s.id, "acted");
+      onNavigate();
+      setLocation(s.actionUrl);
+    }
+  };
 
   return (
-    <Card className={`border-l-2 border-l-${meta.color.replace("text-", "")} ${dimmed ? "opacity-50" : ""}`}>
+    <Card
+      className={`border-l-2 border-l-${meta.color.replace("text-", "")} ${dimmed ? "opacity-50" : ""} ${s.actionUrl ? "cursor-pointer hover:border-primary/50 transition-colors" : ""}`}
+      onClick={handleClick}
+    >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -52,23 +65,7 @@ function SuggestionCard({ s, onAction, onNavigate }: { s: Suggestion; onAction: 
         <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{s.body}</p>
 
         {s.status !== "acted" && s.status !== "dismissed" && (
-          <div className="flex items-center gap-2 pt-1">
-            {s.actionUrl && (
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 text-xs"
-                onClick={() => onAction(s.id, "acted")}
-                asChild
-              >
-                <Link href={s.actionUrl} onClick={onNavigate}>{s.actionLabel ?? "Act on it"}</Link>
-              </Button>
-            )}
-            {!s.actionUrl && s.status === "unread" && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAction(s.id, "read")}>
-                <Check className="h-3 w-3 mr-1" /> Mark read
-              </Button>
-            )}
+          <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
             <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => onAction(s.id, "dismissed")}>
               <X className="h-3 w-3 mr-1" /> Dismiss
             </Button>

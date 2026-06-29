@@ -100,7 +100,7 @@ export default function VisitsList() {
             const dueSoon = days !== null && days >= 0 && days <= 3;
 
             return (
-              <Link key={g.businessId} href={`/visits/${g.latestVisitId}`}>
+              <Link key={g.businessId} href={`/visits/${g.latestVisitId}`} className="block">
                 <Card
                   className={`hover:border-primary/50 transition-colors cursor-pointer ${
                     overdue ? "border-l-4 border-l-destructive" : dueSoon ? "border-l-4 border-l-accent" : ""
