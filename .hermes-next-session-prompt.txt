@@ -1,0 +1,104 @@
+# SVL Next Session — Coaching KB + Plaud Integration
+
+## Date: 2026-06-26
+## Status: Awaiting Erica buy-in before wiring Plaud cron + coaching hook
+
+---
+
+## WHAT SHIPPED (committed)
+
+### Commit b7746b8 — Coaching KB Slice 1 (3 deliverables)
+
+**A. LLM Coaching (hermes-agent)**
+- `artifacts/hermes-agent/src/llm.ts` — OpenAI Chat Completions helper, graceful fallback
+- `artifacts/hermes-agent/src/run-webhook.ts` — LLM coaching attempt with template fallback
+- `artifacts/hermes-agent/tests/llm-coaching.test.ts` — 13 tests, all passing
+
+**B. Profile-Aware Transcript Structuring (api-server)**
+- `artifacts/api-server/src/lib/transcription.ts` — resolves coaching context, injects compiled.transcript instructions
+- buildStructuredTranscript accepts repId, falls back gracefully
+
+**C. Coaching Admin CRUD API (api-server)**
+- `artifacts/api-server/src/routes/coaching.ts` — full CRUD for profiles + knowledge docs
+- `artifacts/api-server/src/routes/index.ts` — registered behind requireAuth
+- `artifacts/api-server/tests/coaching-admin.test.ts` — 14 DB-gated tests, all passing
+
+### Commit c454ed2 — Frontend Dev Bypass
+- `App.tsx` — DEV_BYPASS_AUTH skips Clerk in vite dev
+- `vite.config.ts` — proxy injects x-test-user-id=test-owner
+
+### Pre-existing (from prior sessions)
+- `artifacts/plaud-sync/` — Complete Plaud MCP sync engine (10 files, 2 test suites)
+  - MCP client (JSON-RPC over stdio to @plaud-ai/mcp)
+  - Business matching (Levenshtein fuzzy)
+  - Sync orchestration (pull recordings -> structure -> match -> create visit+media)
+  - CLI runner (run-sync.ts, one-shot, env-configured per-rep)
+  - SVL API client
+
+---
+
+## WHAT'S LIVE RIGHT NOW
+
+- API server: localhost:8090 (rebuilt, running)
+- Frontend dev: localhost:3000 (vite dev, auth bypassed as test-owner)
+- DB: sales_visit_log_dev with seed data
+  - 106 businesses, 13 visits, 5 media (visit 4 richest), 14 coaching suggestions
+  - 1 global coaching profile + 2 knowledge docs (HVAC Atlanta Playbook, Straight Line Objection Library)
+
+### Rep UX test flow:
+1. http://localhost:3000/visits/4 — AI summary, warm badge, objections, follow-ups, transcript card
+2. Bell icon (top-right) — 13 coaching suggestions (coaching/callback/nearby/debrief types)
+3. http://localhost:3000/ — Map-first home screen
+4. http://localhost:3000/routes — 4-day route plan
+5. http://localhost:3000/businesses/3 — Business detail with visit history
+
+---
+
+## WHAT REMAINS (after Erica says go)
+
+### Plaud wiring (2-3 hours)
+1. **OAuth token** — Run `npx -y @plaud-ai/mcp@latest install` with Erica's Plaud account to generate token
+2. **Cron job** — Wire run-sync.ts as recurring cron (every 5-10 min)
+3. **Coaching hook** — Plaud sync creates media with transcriptionStatus=done but doesn't trigger coaching suggestion generation. Either:
+   - (a) plaud-sync calls the hermes-agent webhook after creating media, OR
+   - (b) plaud-sync calls coaching-context endpoint directly before creating the suggestion
+
+### Known issues
+- Visit 4 has 2 transcription cards showing stale 401 errors (old OpenAI key on re-structuring attempts)
+- api-server has 1 pre-existing test failure in agent-coaching-context test (seeded global/default profile conflict)
+- Vision API (nous portal) is down — screenshots captured but can't be analyzed
+
+---
+
+## UNCOMMITTED WORK (not staged)
+- Various modified files in api-server (objectStorage, webhooks, media, suggestions, visits routes)
+- proxy-server.mjs, hermes-agent/package.json
+- Generated API client types (lib/api-zod, lib/api-client-react)
+- Frontend components (coaching-feed, transcription-card, use-suggestions, detail page)
+- docs/plans/ and docs/playbooks/ (planning docs for Erica meeting)
+- .local-object-storage/ (test uploads)
+
+---
+
+## KEY DECISION POINT FOR ERICA MEETING
+
+**Recommendation**: Plaud notetaker pin auto-records, auto-syncs to SVL. Rep workflow becomes:
+1. Walk in, press record on Plaud pin
+2. Have conversation
+3. Pin the business address on the way out (or Plaud tags it)
+4. Everything else is automatic: transcript pulled, structured, business matched, visit created, coaching generated
+
+No app switching. No manual uploads. No typing.
+
+**What Erica needs to decide**:
+- Get a Plaud Note Pin ($159) or use Plaud app on phone
+- One-time OAuth setup (5 min, we do it together)
+- Whether she wants per-business tagging or auto-match from transcript
+
+---
+
+## ENVIRONMENT
+- VPS: Hermes kanban + SVL (Go API + Next/Vite frontend)
+- DB: postgres sales_visit_log_dev
+- Prod: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs)
+- API: :8090 (dev), Clerk auth with x-test-user-id bypass in dev

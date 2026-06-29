@@ -22,6 +22,9 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
+import { createReadStream } from "fs";
+import { mkdir, readFile as readFileFs, stat as statFs, writeFile as writeFileFs } from "fs/promises";
+import { dirname, join } from "path";
 import { logger } from "./logger";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +39,15 @@ function requiredEnv(key: string): string {
 
 function getBucketName(): string {
   return requiredEnv("R2_BUCKET_NAME");
+}
+
+function hasR2Config(): boolean {
+  return Boolean(
+    process.env.R2_ACCOUNT_ID &&
+    process.env.R2_ACCESS_KEY_ID &&
+    process.env.R2_SECRET_ACCESS_KEY &&
+    process.env.R2_BUCKET_NAME,
+  );
 }
 
 function createR2Client(): S3Client {
@@ -53,6 +65,24 @@ let cachedClient: S3Client | null = null;
 function client(): S3Client {
   if (!cachedClient) cachedClient = createR2Client();
   return cachedClient;
+}
+
+const LOCAL_STORAGE_ROOT = process.env.LOCAL_STORAGE_ROOT || "/root/projects/sales-visit-log/.local-object-storage";
+
+function localDataPathForKey(key: string): string {
+  return join(LOCAL_STORAGE_ROOT, key);
+}
+
+function localMetaPathForKey(key: string): string {
+  return `${localDataPathForKey(key)}.meta.json`;
+}
+
+async function readLocalMeta(key: string): Promise<{ contentType?: string; metadata?: Record<string, string> }> {
+  try {
+    return JSON.parse(await readFileFs(localMetaPathForKey(key), "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +137,40 @@ class R2StorageFile implements StorageFile {
   }
 }
 
+class LocalStorageFile implements StorageFile {
+  constructor(
+    public bucket: string,
+    public key: string,
+  ) {}
+
+  async getMetadata() {
+    const [info, parsed] = await Promise.all([
+      statFs(localDataPathForKey(this.key)),
+      readLocalMeta(this.key),
+    ]);
+    return {
+      contentType: parsed.contentType,
+      size: info.size,
+      metadata: parsed.metadata,
+    };
+  }
+
+  async getReadStream(): Promise<Readable> {
+    await statFs(localDataPathForKey(this.key));
+    return createReadStream(localDataPathForKey(this.key));
+  }
+
+  async setMetadata(meta: { contentType?: string; metadata?: Record<string, string> }) {
+    const metaPath = localMetaPathForKey(this.key);
+    const existing = await readLocalMeta(this.key);
+    await mkdir(dirname(metaPath), { recursive: true });
+    await writeFileFs(metaPath, JSON.stringify({
+      contentType: meta.contentType ?? existing.contentType,
+      metadata: meta.metadata ?? existing.metadata ?? {},
+    }));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -158,6 +222,35 @@ export class ObjectStorageService {
     return getSignedUrl(client(), cmd, { expiresIn: 900 });
   }
 
+  async storeUploadedObject(
+    buffer: Buffer,
+    opts: { contentType?: string; metadata?: Record<string, string> } = {},
+  ): Promise<string> {
+    const objectId = randomUUID();
+    const key = `${this.getPrivateObjectDir()}/${objectId}`;
+
+    if (hasR2Config()) {
+      const cmd = new PutObjectCommand({
+        Bucket: getBucketName(),
+        Key: key,
+        Body: buffer,
+        ContentType: opts.contentType,
+        Metadata: opts.metadata,
+      });
+      await client().send(cmd);
+      return `/objects/${key}`;
+    }
+
+    const dataPath = localDataPathForKey(key);
+    await mkdir(dirname(dataPath), { recursive: true });
+    await writeFileFs(dataPath, buffer);
+    await writeFileFs(localMetaPathForKey(key), JSON.stringify({
+      contentType: opts.contentType,
+      metadata: opts.metadata ?? {},
+    }));
+    return `/objects/${key}`;
+  }
+
   /**
    * Convert a presigned URL (or raw path) to the internal `/objects/{key}` path
    * stored in the database.
@@ -193,16 +286,25 @@ export class ObjectStorageService {
     const key = objectPath.slice("/objects/".length);
     if (!key) throw new ObjectNotFoundError();
 
-    const file = new R2StorageFile(getBucketName(), key);
-
-    // Verify existence
     try {
-      await file.getMetadata();
+      const localFile = new LocalStorageFile("local", key);
+      await localFile.getMetadata();
+      return localFile;
     } catch {
-      throw new ObjectNotFoundError();
+      // Fall through to R2.
     }
 
-    return file;
+    if (hasR2Config()) {
+      const file = new R2StorageFile(getBucketName(), key);
+      try {
+        await file.getMetadata();
+        return file;
+      } catch {
+        throw new ObjectNotFoundError();
+      }
+    }
+
+    throw new ObjectNotFoundError();
   }
 
   /**
@@ -210,6 +312,14 @@ export class ObjectStorageService {
    */
   async searchPublicObject(filePath: string): Promise<StorageFile | null> {
     const key = `${PUBLIC_PREFIX}/${filePath}`;
+    try {
+      const localFile = new LocalStorageFile("local", key);
+      await localFile.getMetadata();
+      return localFile;
+    } catch {
+      if (!hasR2Config()) return null;
+    }
+
     const file = new R2StorageFile(getBucketName(), key);
     try {
       await file.getMetadata();

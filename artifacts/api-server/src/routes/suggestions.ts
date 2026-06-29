@@ -57,6 +57,14 @@ router.get("/suggestions", async (req, res): Promise<void> => {
 });
 
 router.get("/suggestions/stream", (req, res): void => {
+  if (!req.userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const subscriberId = req.userId;
+  const subscriberCanSeeAll = canSeeAllReps(req.userRole);
+
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
@@ -66,6 +74,7 @@ router.get("/suggestions/stream", (req, res): void => {
   res.write(": connected\n\n");
 
   const unsubscribe = suggestionBus.subscribe((suggestion) => {
+    if (!subscriberCanSeeAll && suggestion.repId !== subscriberId) return;
     res.write(`event: suggestion\ndata: ${JSON.stringify(suggestion)}\n\n`);
   });
 

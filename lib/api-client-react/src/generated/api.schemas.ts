@@ -125,7 +125,7 @@ export interface Visit {
   outcome: VisitOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: string;
+  nextActionDate?: string | null;
   noteCount: number;
   mediaCount: number;
   createdAt: string;
@@ -196,6 +196,7 @@ export interface StructuredNote {
   followUpItems?: string[];
   contactInfo?: string;
   nextStep?: string;
+  callbackDate?: string;
 }
 
 export interface Media {
@@ -204,13 +205,13 @@ export interface Media {
   type: MediaType;
   url: string;
   filename: string;
-  caption?: string;
+  caption?: string | null;
   mimeType?: string;
   sizeBytes?: number;
-  transcript?: string;
+  transcript?: string | null;
   transcriptionStatus: MediaTranscriptionStatus;
-  transcriptionError?: string;
-  aiStructured?: StructuredNote;
+  transcriptionError?: string | null;
+  aiStructured?: StructuredNote | null;
   createdAt: string;
 }
 
@@ -222,7 +223,7 @@ export interface VisitDetail {
   outcome: VisitDetailOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: string;
+  nextActionDate?: string | null;
   notes: Note[];
   media: Media[];
   createdAt: string;
@@ -244,7 +245,7 @@ export interface CreateVisitBody {
   outcome: CreateVisitBodyOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: string;
+  nextActionDate?: string | null;
 }
 
 export type UpdateVisitBodyOutcome =
@@ -262,7 +263,7 @@ export interface UpdateVisitBody {
   outcome?: UpdateVisitBodyOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: string;
+  nextActionDate?: string | null;
 }
 
 export type CreateNoteBodyType =
@@ -406,7 +407,7 @@ export const UploadMediaBodyType = {
 export type UploadMediaBody = {
   file: Blob;
   type: UploadMediaBodyType;
-  caption?: string;
+  caption?: string | null;
 };
 
 export type ListEventsParams = {

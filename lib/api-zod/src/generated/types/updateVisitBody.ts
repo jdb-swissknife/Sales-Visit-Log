@@ -12,5 +12,5 @@ export interface UpdateVisitBody {
   outcome?: UpdateVisitBodyOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: Date;
+  nextActionDate?: Date | null;
 }

@@ -14,4 +14,5 @@ export interface StructuredNote {
   followUpItems?: string[];
   contactInfo?: string;
   nextStep?: string;
+  callbackDate?: string;
 }

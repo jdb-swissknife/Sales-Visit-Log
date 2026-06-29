@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react/custom-fetch";
 
@@ -20,12 +21,46 @@ export type Suggestion = {
 
 const SUGGESTIONS_KEY = ["/api/suggestions"] as const;
 
+function upsertSuggestion(current: Suggestion[] | undefined, incoming: Suggestion): Suggestion[] {
+  const existing = current ?? [];
+  const idx = existing.findIndex((s) => s.id === incoming.id);
+  if (idx === -1) return [incoming, ...existing].slice(0, 50);
+
+  const next = [...existing];
+  next[idx] = { ...next[idx], ...incoming };
+  return next;
+}
+
 export function useSuggestions() {
   return useQuery({
     queryKey: SUGGESTIONS_KEY,
     queryFn: () => customFetch<Suggestion[]>("/api/suggestions"),
     refetchInterval: 30_000,
   });
+}
+
+export function useSuggestionStream() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const stream = new EventSource("/api/suggestions/stream");
+    const onSuggestion = (event: Event) => {
+      const msg = event as MessageEvent<string>;
+      try {
+        const suggestion = JSON.parse(msg.data) as Suggestion;
+        qc.setQueryData<Suggestion[]>(SUGGESTIONS_KEY, (current) => upsertSuggestion(current, suggestion));
+      } catch {
+        // Ignore malformed stream payloads; the 30s poll still backstops the UI.
+      }
+    };
+
+    stream.addEventListener("suggestion", onSuggestion);
+
+    return () => {
+      stream.removeEventListener("suggestion", onSuggestion);
+      stream.close();
+    };
+  }, [qc]);
 }
 
 export function useUnreadCount() {

@@ -4,7 +4,11 @@ import multer from "multer";
 import { db, mediaTable } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logEvent } from "../lib/events";
-import { processMediaTranscription } from "../lib/transcription";
+import {
+  processMediaTranscription,
+  processTextTranscriptMedia,
+  shouldTreatAsTranscriptDocument,
+} from "../lib/transcription";
 import {
   ListMediaForVisitParams,
   ListMediaForVisitResponse,
@@ -57,25 +61,20 @@ router.post(
 
     const caption = req.body.caption as string | undefined;
 
-    const uploadUrl = await storageService.getObjectEntityUploadURL();
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.mimetype,
-        "Content-Length": String(file.size),
+    const objectPath = await storageService.storeUploadedObject(file.buffer, {
+      contentType: file.mimetype,
+      metadata: {
+        originalName: file.originalname,
       },
-      body: file.buffer,
     });
-
-    if (!uploadResponse.ok) {
-      res.status(500).json({ error: "Failed to upload file to storage" });
-      return;
-    }
-
-    const objectPath = storageService.normalizeObjectEntityPath(uploadUrl.split("?")[0]);
     const servingUrl = `/api/storage${objectPath}`;
 
     const isVoice = mediaType === "voice_note" || mediaType === "interview";
+    const isTranscriptDocument = shouldTreatAsTranscriptDocument({
+      type: mediaType,
+      filename: file.originalname,
+      mimeType: file.mimetype,
+    });
 
     const [media] = await db
       .insert(mediaTable)
@@ -87,7 +86,7 @@ router.post(
         caption: caption ?? null,
         mimeType: file.mimetype,
         sizeBytes: file.size,
-        transcriptionStatus: isVoice ? "pending" : "none",
+        transcriptionStatus: isVoice || isTranscriptDocument ? "pending" : "none",
       })
       .returning();
 
@@ -106,6 +105,8 @@ router.post(
         filename: file.originalname,
         mimeType: file.mimetype,
       });
+    } else if (isTranscriptDocument) {
+      void processTextTranscriptMedia(media.id, file.buffer.toString("utf8").replace(/^\uFEFF/, "").trim());
     }
 
     res.status(201).json(media);
@@ -152,7 +153,15 @@ router.post("/media/:id/transcription", async (req, res): Promise<void> => {
     .set({ transcriptionStatus: "pending", transcriptionError: null })
     .where(eq(mediaTable.id, params.data.id))
     .returning();
-  void processMediaTranscription(params.data.id);
+  if (shouldTreatAsTranscriptDocument({
+    type: media.type,
+    filename: media.filename,
+    mimeType: media.mimeType,
+  })) {
+    void processTextTranscriptMedia(params.data.id);
+  } else {
+    void processMediaTranscription(params.data.id);
+  }
   res.status(202).json(GetMediaTranscriptionResponse.parse(updated));
 });
 

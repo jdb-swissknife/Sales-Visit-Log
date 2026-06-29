@@ -183,7 +183,7 @@ router.get("/visits/grouped", async (req, res): Promise<void> => {
         businessName: r.businessName ?? `Business #${r.businessId}`,
         businessAddress: r.businessAddress ?? null,
         visitCount: 1,
-        lastVisitAt: r.visitedAt,
+        lastVisitAt: r.visitedAt.toISOString(),
         lastOutcome: r.outcome,
         nextActionDate: r.nextActionDate ? r.nextActionDate.toISOString() : null,
         latestSummary: summaryMap.get(r.visitId) ?? null,

@@ -107,7 +107,7 @@ async function buildEnvelope(
     source: "sales-outreach-app",
     environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
     correlationId: data.visitId != null ? `visit-${data.visitId}` : null,
-    rep: null, // populated once team auth (Phase 1 backlog) lands
+    rep: data.repId ? { id: data.repId, name: null, role: null } : null,
     business,
     visit,
     callback,

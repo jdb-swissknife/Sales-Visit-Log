@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "run-harness": "tsx src/run-harness.ts",
     "run-debrief": "tsx src/run-debrief.ts",
-    "run-coaching": "tsx src/run-coaching.ts"
+    "run-coaching": "tsx src/run-coaching.ts",
+    "run-webhook": "tsx src/run-webhook.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

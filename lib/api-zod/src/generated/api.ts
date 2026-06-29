@@ -204,7 +204,7 @@ export const ListVisitsForBusinessResponseItem = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -224,7 +224,7 @@ export const ListVisitsResponseItem = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -240,7 +240,7 @@ export const CreateVisitBody = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   repId: zod.string().optional(),
 });
 
@@ -259,7 +259,7 @@ export const GetVisitResponse = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   notes: zod.array(
     zod.object({
       id: zod.number(),
@@ -278,10 +278,10 @@ export const GetVisitResponse = zod.object({
       type: zod.enum(["image", "voice_note", "interview", "document"]),
       url: zod.string(),
       filename: zod.string(),
-      caption: zod.string().optional(),
+      caption: zod.string().nullish(),
       mimeType: zod.string().optional(),
       sizeBytes: zod.number().optional(),
-      transcript: zod.string().optional(),
+      transcript: zod.string().nullish(),
       transcriptionStatus: zod.enum([
         "none",
         "pending",
@@ -289,7 +289,7 @@ export const GetVisitResponse = zod.object({
         "done",
         "error",
       ]),
-      transcriptionError: zod.string().optional(),
+      transcriptionError: zod.string().nullish(),
       aiStructured: zod
         .object({
           summary: zod.string().optional(),
@@ -301,7 +301,7 @@ export const GetVisitResponse = zod.object({
           contactInfo: zod.string().optional(),
           nextStep: zod.string().optional(),
         })
-        .optional(),
+        .nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -322,7 +322,7 @@ export const UpdateVisitBody = zod.object({
     .optional(),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
 });
 
 export const UpdateVisitResponse = zod.object({
@@ -333,7 +333,7 @@ export const UpdateVisitResponse = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -424,10 +424,10 @@ export const ListMediaForVisitResponseItem = zod.object({
   type: zod.enum(["image", "voice_note", "interview", "document"]),
   url: zod.string(),
   filename: zod.string(),
-  caption: zod.string().optional(),
+  caption: zod.string().nullish(),
   mimeType: zod.string().optional(),
   sizeBytes: zod.number().optional(),
-  transcript: zod.string().optional(),
+  transcript: zod.string().nullish(),
   transcriptionStatus: zod.enum([
     "none",
     "pending",
@@ -435,7 +435,7 @@ export const ListMediaForVisitResponseItem = zod.object({
     "done",
     "error",
   ]),
-  transcriptionError: zod.string().optional(),
+  transcriptionError: zod.string().nullish(),
   aiStructured: zod
     .object({
       summary: zod.string().optional(),
@@ -447,7 +447,7 @@ export const ListMediaForVisitResponseItem = zod.object({
       contactInfo: zod.string().optional(),
       nextStep: zod.string().optional(),
     })
-    .optional(),
+    .nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListMediaForVisitResponse = zod.array(
@@ -480,10 +480,10 @@ export const GetMediaTranscriptionResponse = zod.object({
   type: zod.enum(["image", "voice_note", "interview", "document"]),
   url: zod.string(),
   filename: zod.string(),
-  caption: zod.string().optional(),
+  caption: zod.string().nullish(),
   mimeType: zod.string().optional(),
   sizeBytes: zod.number().optional(),
-  transcript: zod.string().optional(),
+  transcript: zod.string().nullish(),
   transcriptionStatus: zod.enum([
     "none",
     "pending",
@@ -491,7 +491,7 @@ export const GetMediaTranscriptionResponse = zod.object({
     "done",
     "error",
   ]),
-  transcriptionError: zod.string().optional(),
+  transcriptionError: zod.string().nullish(),
   aiStructured: zod
     .object({
       summary: zod.string().optional(),
@@ -503,7 +503,7 @@ export const GetMediaTranscriptionResponse = zod.object({
       contactInfo: zod.string().optional(),
       nextStep: zod.string().optional(),
     })
-    .optional(),
+    .nullish(),
   createdAt: zod.coerce.date(),
 });
 

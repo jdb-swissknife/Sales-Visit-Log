@@ -13,6 +13,6 @@ export interface CreateVisitBody {
   outcome: CreateVisitBodyOutcome;
   contactName?: string;
   contactPhone?: string;
-  nextActionDate?: Date;
+  nextActionDate?: Date | null;
   repId?: string;
 }

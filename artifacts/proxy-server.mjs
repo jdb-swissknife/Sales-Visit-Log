@@ -52,6 +52,14 @@ function proxyToApi(req, res) {
 }
 
 const server = createServer(async (req, res) => {
+  const urlPath = req.url?.split("?")[0] ?? "/";
+
+  if (urlPath === "/health") {
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(JSON.stringify({ status: "ok", service: "svl-frontend-proxy", apiTarget: API_TARGET.href }));
+    return;
+  }
+
   // Proxy API calls to the backend
   if (req.url?.startsWith("/api")) {
     proxyToApi(req, res);
@@ -59,10 +67,10 @@ const server = createServer(async (req, res) => {
   }
 
   // Serve static files
-  let urlPath = req.url?.split("?")[0] ?? "/";
-  if (urlPath === "/") urlPath = "/index.html";
+  let staticPath = urlPath;
+  if (staticPath === "/") staticPath = "/index.html";
 
-  const filePath = normalize(join(STATIC_DIR, urlPath));
+  const filePath = normalize(join(STATIC_DIR, staticPath));
   if (!filePath.startsWith(STATIC_DIR)) {
     res.writeHead(403);
     res.end("Forbidden");

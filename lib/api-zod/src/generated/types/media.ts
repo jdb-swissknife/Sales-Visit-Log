@@ -15,12 +15,12 @@ export interface Media {
   type: MediaType;
   url: string;
   filename: string;
-  caption?: string;
+  caption?: string | null;
   mimeType?: string;
   sizeBytes?: number;
-  transcript?: string;
+  transcript?: string | null;
   transcriptionStatus: MediaTranscriptionStatus;
-  transcriptionError?: string;
-  aiStructured?: StructuredNote;
+  transcriptionError?: string | null;
+  aiStructured?: StructuredNote | null;
   createdAt: Date;
 }
