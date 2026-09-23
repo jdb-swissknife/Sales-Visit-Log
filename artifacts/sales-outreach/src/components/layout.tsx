@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { UserButton } from "@clerk/react";
-import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon, CloudOff, RefreshCw } from "lucide-react";
+import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon, CloudOff, RefreshCw, CalendarCheck } from "lucide-react";
+import { useGetPipelineStats, getGetPipelineStatsQueryKey } from "@workspace/api-client-react";
 import { useOfflineQueue } from "@/hooks/use-offline-queue";
 import { CoachingFeed } from "@/components/coaching-feed";
 
@@ -36,6 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Map", icon: MapIcon },
+    { href: "/followups", label: "Follow-ups", icon: CalendarCheck },
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
     { href: "/businesses", label: "Directory", icon: Briefcase },
     { href: "/visits", label: "Field Notes", icon: MapPin },
@@ -44,10 +46,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/coldcall", label: "Cold Call", icon: Phone },
   ];
 
-  // Bottom nav fits 5 items comfortably on a phone
+  // Bottom nav fits 5 items comfortably on a phone. Follow-ups replaces Routes
+  // here: the queue is what a rep opens first each morning; Routes stays in the
+  // desktop sidebar.
   const mobileNavItems = navItems.filter((i) =>
-    ["/", "/businesses", "/routes", "/visits", "/dashboard"].includes(i.href)
+    ["/", "/followups", "/businesses", "/visits", "/dashboard"].includes(i.href)
   );
+
+  // Badge count for the Follow-ups nav item (overdue + due today).
+  const { data: pipeline } = useGetPipelineStats({
+    query: { queryKey: getGetPipelineStatsQueryKey(), staleTime: 60_000, refetchInterval: 5 * 60_000 },
+  });
+  const dueCount = pipeline?.followUpsDue ?? 0;
 
   const isFullBleed = location === "/";
 
@@ -90,6 +100,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
+                  {item.href === "/followups" && dueCount > 0 && (
+                    <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${isActive ? "bg-primary-foreground/20" : "bg-amber-500 text-white"}`}>
+                      {dueCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -124,7 +139,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 isActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              <span className="relative">
+                <item.icon className="h-5 w-5" />
+                {item.href === "/followups" && dueCount > 0 && (
+                  <span className="absolute -right-2 -top-1.5 min-w-[16px] rounded-full bg-amber-500 px-1 text-center text-[9px] font-semibold leading-4 text-white">
+                    {dueCount > 99 ? "99+" : dueCount}
+                  </span>
+                )}
+              </span>
               {item.label}
             </Link>
           );

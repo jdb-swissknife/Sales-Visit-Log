@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, and } from "drizzle-orm";
 import { db, visitsTable, businessesTable, notesTable, mediaTable } from "@workspace/db";
 import { logEvent } from "../lib/events";
+import { applyVisitToStage } from "../lib/stage";
 import { canSeeAllReps } from "../middlewares/clerk-auth";
 import {
   ListVisitsResponse,
@@ -91,10 +92,9 @@ router.post("/visits", async (req, res): Promise<void> => {
     .from(businessesTable)
     .where(eq(businessesTable.id, visit.businessId));
 
-  await db
-    .update(businessesTable)
-    .set({ status: "contacted", updatedAt: new Date() })
-    .where(eq(businessesTable.id, visit.businessId));
+  // Derive the pipeline stage from the visit. Never demotes a won/lost deal
+  // (the old code reset every prospect to "contacted" — see lib/pipeline.ts).
+  await applyVisitToStage(visit.businessId, visit);
 
   void logEvent({
     type: "visit.created",
@@ -200,6 +200,10 @@ router.put("/visits/:id", async (req, res): Promise<void> => {
     .select({ name: businessesTable.name })
     .from(businessesTable)
     .where(eq(businessesTable.id, updated.businessId));
+
+  if (parsed.data.outcome != null || parsed.data.nextActionDate != null) {
+    await applyVisitToStage(updated.businessId, updated);
+  }
 
   void logEvent({
     type: "visit.updated",

@@ -5,14 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Phone, Star, Map, Plus, Clock, FileText, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, parseISO } from "date-fns";
-
-const STATUS_COLORS: Record<string, string> = {
-  not_contacted: "bg-muted text-muted-foreground",
-  contacted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  follow_up: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
-  converted: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  not_interested: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-};
+import { PipelineCard } from "@/components/pipeline-card";
+import { stageBadge, stageLabel, formatMoney } from "@/lib/pipeline";
 
 export default function BusinessDetail() {
   const params = useParams();
@@ -52,9 +46,17 @@ export default function BusinessDetail() {
             <Badge variant="outline" className="capitalize">{business.sector}</Badge>
             {business.priority === 'high' && <Star className="h-5 w-5 text-red-500 fill-red-500" />}
           </div>
-          <Badge className={`capitalize shadow-none ${STATUS_COLORS[business.status] || ""}`} variant="secondary">
-            {business.status.replace(/_/g, " ")}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`shadow-none ${stageBadge(business.status)}`} variant="secondary">
+              {stageLabel(business.status)}
+            </Badge>
+            {business.dealValue != null && business.dealValue > 0 && (
+              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{formatMoney(business.dealValue)}</span>
+            )}
+            {business.decisionMaker && (
+              <span className="text-sm text-muted-foreground">Decision maker: {business.decisionMaker}</span>
+            )}
+          </div>
         </div>
         
         <Link href={`/visits/new?businessId=${business.id}`}>
@@ -66,7 +68,9 @@ export default function BusinessDetail() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1 border-primary/10 shadow-sm">
+        <div className="md:col-span-1 space-y-6">
+        <PipelineCard business={business} />
+        <Card className="border-primary/10 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Details</CardTitle>
           </CardHeader>
@@ -109,6 +113,7 @@ export default function BusinessDetail() {
             )}
           </CardContent>
         </Card>
+        </div>
 
         <div className="md:col-span-2 space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">

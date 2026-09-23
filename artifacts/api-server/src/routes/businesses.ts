@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, businessesTable, visitsTable } from "@workspace/db";
 import { geocodeAddress } from "../lib/geocode";
+import { moveStage } from "../lib/stage";
+import { isPipelineStage, isTerminalStage } from "../lib/pipeline";
 import {
   ListBusinessesResponse,
   CreateBusinessBody,
@@ -11,6 +13,9 @@ import {
   UpdateBusinessBody,
   UpdateBusinessResponse,
   DeleteBusinessParams,
+  UpdateBusinessPipelineParams,
+  UpdateBusinessPipelineBody,
+  UpdateBusinessPipelineResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -31,7 +36,7 @@ function geocodeInBackground(businessId: number, address: string): void {
 /** Generic sanitizer that converts nulls to undefined for optional fields. */
 function sanitizeBusiness(b: Record<string, unknown>): Record<string, unknown> {
   const result = { ...b };
-  for (const key of ["routeDay", "buildingGroup", "notes", "address", "phone", "website", "mapsUrl", "latitude", "longitude", "geocodedAt", "lastVisitRepId", "lastVisitAt", "lastVisitOutcome"]) {
+  for (const key of ["routeDay", "buildingGroup", "notes", "address", "phone", "website", "mapsUrl", "latitude", "longitude", "geocodedAt", "lastVisitRepId", "lastVisitAt", "lastVisitOutcome", "dealValue", "decisionMaker", "lostReason", "stageChangedAt", "closedAt"]) {
     if (result[key] == null) (result as Record<string, unknown>)[key] = undefined;
   }
   return result;
@@ -145,19 +150,73 @@ router.put("/businesses/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [business] = await db
+  const { status: requestedStatus, ...rest } = parsed.data;
+  let [business] = await db
     .update(businessesTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...rest, updatedAt: new Date() })
     .where(eq(businessesTable.id, params.data.id))
     .returning();
   if (!business) {
     res.status(404).json({ error: "Business not found" });
     return;
   }
+  if (requestedStatus && isPipelineStage(requestedStatus) && requestedStatus !== business.status) {
+    await moveStage({ businessId: business.id, to: requestedStatus, repId: req.userId, reason: "manual" });
+    [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, business.id));
+  }
   if (parsed.data.address && business.address && business.latitude == null) {
     geocodeInBackground(business.id, business.address);
   }
   res.json(UpdateBusinessResponse.parse(sanitizeBusiness(business)));
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /businesses/:id/pipeline — move through the pipeline / record deal
+// details. Partial update; only the fields sent are touched.
+// ---------------------------------------------------------------------------
+
+router.patch("/businesses/:id/pipeline", async (req, res): Promise<void> => {
+  const params = UpdateBusinessPipelineParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = UpdateBusinessPipelineBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { status, ...fields } = parsed.data;
+
+  const patch: Partial<typeof businessesTable.$inferInsert> = {};
+  if ("dealValue" in fields) patch.dealValue = fields.dealValue ?? null;
+  if ("decisionMaker" in fields) patch.decisionMaker = fields.decisionMaker ?? null;
+  if ("lostReason" in fields) patch.lostReason = fields.lostReason ?? null;
+  // Reopening a lost deal clears the lost reason unless one was sent.
+  if (status && !isTerminalStage(status) && !("lostReason" in fields)) patch.lostReason = null;
+
+  if (Object.keys(patch).length > 0) {
+    const [row] = await db
+      .update(businessesTable)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(businessesTable.id, params.data.id))
+      .returning({ id: businessesTable.id });
+    if (!row) {
+      res.status(404).json({ error: "Business not found" });
+      return;
+    }
+  }
+
+  if (status) {
+    await moveStage({ businessId: params.data.id, to: status, repId: req.userId, reason: "manual" });
+  }
+
+  const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, params.data.id));
+  if (!business) {
+    res.status(404).json({ error: "Business not found" });
+    return;
+  }
+  res.json(UpdateBusinessPipelineResponse.parse(sanitizeBusiness(business)));
 });
 
 router.delete("/businesses/:id", async (req, res): Promise<void> => {

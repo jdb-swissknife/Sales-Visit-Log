@@ -25,6 +25,7 @@ export const BusinessStatus = {
   not_contacted: "not_contacted",
   contacted: "contacted",
   follow_up: "follow_up",
+  proposal_sent: "proposal_sent",
   converted: "converted",
   not_interested: "not_interested",
 } as const;
@@ -56,6 +57,16 @@ export interface Business {
   routeDay?: number;
   isBonus: boolean;
   buildingGroup?: string;
+  /** Estimated deal value in whole dollars */
+  dealValue?: number | null;
+  decisionMaker?: string | null;
+  lostReason?: string | null;
+  stageChangedAt?: string | null;
+  closedAt?: string | null;
+  lastVisitRepId?: string | null;
+  lastVisitAt?: string | null;
+  lastVisitOutcome?: string | null;
+  visitCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,6 +87,7 @@ export const CreateBusinessBodyStatus = {
   not_contacted: "not_contacted",
   contacted: "contacted",
   follow_up: "follow_up",
+  proposal_sent: "proposal_sent",
   converted: "converted",
   not_interested: "not_interested",
 } as const;
@@ -123,9 +135,9 @@ export interface Visit {
   businessName?: string;
   visitedAt: string;
   outcome: VisitOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: string;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: string | null;
   noteCount: number;
   mediaCount: number;
   createdAt: string;
@@ -220,9 +232,9 @@ export interface VisitDetail {
   businessName?: string;
   visitedAt: string;
   outcome: VisitDetailOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: string;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: string | null;
   notes: Note[];
   media: Media[];
   createdAt: string;
@@ -242,9 +254,10 @@ export interface CreateVisitBody {
   businessId: number;
   visitedAt: string;
   outcome: CreateVisitBodyOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: string;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: string | null;
+  repId?: string;
 }
 
 export type UpdateVisitBodyOutcome =
@@ -260,9 +273,9 @@ export const UpdateVisitBodyOutcome = {
 export interface UpdateVisitBody {
   visitedAt?: string;
   outcome?: UpdateVisitBodyOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: string;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: string | null;
 }
 
 export type CreateNoteBodyType =
@@ -280,16 +293,17 @@ export interface CreateNoteBody {
   durationSeconds?: number;
 }
 
-export type EventPayload = { [key: string]: unknown };
+export type EventPayload = { [key: string]: unknown } | null;
 
 export interface Event {
   id: number;
   type: string;
-  entityType?: string;
-  entityId?: number;
-  businessId?: number;
-  visitId?: number;
+  entityType?: string | null;
+  entityId?: number | null;
+  businessId?: number | null;
+  visitId?: number | null;
   payload?: EventPayload;
+  repId?: string | null;
   source: string;
   createdAt: string;
 }
@@ -333,6 +347,112 @@ export interface SectorCount {
   positiveCount: number;
 }
 
+export type UpdatePipelineBodyStatus =
+  (typeof UpdatePipelineBodyStatus)[keyof typeof UpdatePipelineBodyStatus];
+
+export const UpdatePipelineBodyStatus = {
+  not_contacted: "not_contacted",
+  contacted: "contacted",
+  follow_up: "follow_up",
+  proposal_sent: "proposal_sent",
+  converted: "converted",
+  not_interested: "not_interested",
+} as const;
+
+export interface UpdatePipelineBody {
+  status?: UpdatePipelineBodyStatus;
+  dealValue?: number | null;
+  decisionMaker?: string | null;
+  lostReason?: string | null;
+}
+
+export type FollowUpItemBucket =
+  (typeof FollowUpItemBucket)[keyof typeof FollowUpItemBucket];
+
+export const FollowUpItemBucket = {
+  overdue: "overdue",
+  today: "today",
+  upcoming: "upcoming",
+  stale: "stale",
+} as const;
+
+export interface FollowUpItem {
+  businessId: number;
+  businessName: string;
+  sector: string;
+  address?: string | null;
+  phone?: string | null;
+  status: string;
+  priority: string;
+  dealValue?: number | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  lastVisitId?: number | null;
+  lastVisitAt?: string | null;
+  lastOutcome?: string | null;
+  repId?: string | null;
+  /** The promised next-action date from the latest visit, if any */
+  dueAt?: string | null;
+  bucket: FollowUpItemBucket;
+  daysSinceVisit?: number | null;
+  daysInStage?: number | null;
+}
+
+export type FollowUpQueueCounts = {
+  overdue: number;
+  today: number;
+  upcoming: number;
+  stale: number;
+};
+
+export interface FollowUpQueue {
+  overdue: FollowUpItem[];
+  today: FollowUpItem[];
+  upcoming: FollowUpItem[];
+  stale: FollowUpItem[];
+  counts: FollowUpQueueCounts;
+}
+
+export interface PipelineStage {
+  status: string;
+  count: number;
+  /** Sum of dealValue for prospects in this stage */
+  dealValue: number;
+}
+
+export interface RepLeaderboardEntry {
+  repId: string;
+  visitsThisWeek: number;
+  visitsThisMonth: number;
+  wonThisMonth: number;
+  wonValueThisMonth: number;
+  openFollowUps: number;
+}
+
+export interface PipelineStats {
+  funnel: PipelineStage[];
+  /** Sum of dealValue across open (non-terminal) stages */
+  openPipelineValue: number;
+  /** dealValue weighted by stage close probability */
+  weightedPipelineValue: number;
+  wonCount: number;
+  lostCount: number;
+  /** won / (won + lost), 0-1; null when nothing closed yet */
+  winRate?: number | null;
+  wonThisMonth: number;
+  wonValueThisMonth: number;
+  avgDaysToClose?: number | null;
+  visitsToday: number;
+  visitsThisWeek: number;
+  /** Share of visits where a contact name was captured, 0-1 */
+  contactRate?: number | null;
+  /** Overdue + due-today follow-ups */
+  followUpsDue: number;
+  staleLeads: number;
+  /** Only populated for sales leaders and above */
+  leaderboard: RepLeaderboardEntry[];
+}
+
 export type RouteBusinessPriority =
   (typeof RouteBusinessPriority)[keyof typeof RouteBusinessPriority];
 
@@ -349,6 +469,7 @@ export const RouteBusinessStatus = {
   not_contacted: "not_contacted",
   contacted: "contacted",
   follow_up: "follow_up",
+  proposal_sent: "proposal_sent",
   converted: "converted",
   not_interested: "not_interested",
 } as const;
@@ -418,5 +539,16 @@ export type ListEventsParams = {
    * Filter by event type prefix (e.g. "visit.")
    */
   type?: string;
+  /**
+   * Scope the feed to a single rep (events with a matching rep_id)
+   */
+  repId?: string;
   limit?: number;
+};
+
+export type ListFollowUpsParams = {
+  /**
+   * Days without a visit before an open prospect counts as stale
+   */
+  staleDays?: number;
 };

@@ -39,6 +39,7 @@ export const ListBusinessesResponseItem = zod.object({
     "not_contacted",
     "contacted",
     "follow_up",
+    "proposal_sent",
     "converted",
     "not_interested",
   ]),
@@ -46,6 +47,18 @@ export const ListBusinessesResponseItem = zod.object({
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),
+  dealValue: zod
+    .number()
+    .nullish()
+    .describe("Estimated deal value in whole dollars"),
+  decisionMaker: zod.string().nullish(),
+  lostReason: zod.string().nullish(),
+  stageChangedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+  lastVisitRepId: zod.string().nullish(),
+  lastVisitAt: zod.string().nullish(),
+  lastVisitOutcome: zod.string().nullish(),
+  visitCount: zod.number().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -75,6 +88,7 @@ export const CreateBusinessBody = zod.object({
       "not_contacted",
       "contacted",
       "follow_up",
+      "proposal_sent",
       "converted",
       "not_interested",
     ])
@@ -107,6 +121,7 @@ export const GetBusinessResponse = zod.object({
     "not_contacted",
     "contacted",
     "follow_up",
+    "proposal_sent",
     "converted",
     "not_interested",
   ]),
@@ -114,6 +129,18 @@ export const GetBusinessResponse = zod.object({
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),
+  dealValue: zod
+    .number()
+    .nullish()
+    .describe("Estimated deal value in whole dollars"),
+  decisionMaker: zod.string().nullish(),
+  lostReason: zod.string().nullish(),
+  stageChangedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+  lastVisitRepId: zod.string().nullish(),
+  lastVisitAt: zod.string().nullish(),
+  lastVisitOutcome: zod.string().nullish(),
+  visitCount: zod.number().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -146,6 +173,7 @@ export const UpdateBusinessBody = zod.object({
       "not_contacted",
       "contacted",
       "follow_up",
+      "proposal_sent",
       "converted",
       "not_interested",
     ])
@@ -171,6 +199,7 @@ export const UpdateBusinessResponse = zod.object({
     "not_contacted",
     "contacted",
     "follow_up",
+    "proposal_sent",
     "converted",
     "not_interested",
   ]),
@@ -178,6 +207,18 @@ export const UpdateBusinessResponse = zod.object({
   routeDay: zod.number().optional(),
   isBonus: zod.boolean(),
   buildingGroup: zod.string().optional(),
+  dealValue: zod
+    .number()
+    .nullish()
+    .describe("Estimated deal value in whole dollars"),
+  decisionMaker: zod.string().nullish(),
+  lostReason: zod.string().nullish(),
+  stageChangedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+  lastVisitRepId: zod.string().nullish(),
+  lastVisitAt: zod.string().nullish(),
+  lastVisitOutcome: zod.string().nullish(),
+  visitCount: zod.number().optional(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -187,6 +228,73 @@ export const UpdateBusinessResponse = zod.object({
  */
 export const DeleteBusinessParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * Partial update of pipeline fields only. A status change stamps `stageChangedAt` (and `closedAt` for terminal stages) and logs a `business.stage_changed` event so the AI agent can see it.
+
+ * @summary Move a prospect through the pipeline / record deal details
+ */
+export const UpdateBusinessPipelineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateBusinessPipelineBody = zod.object({
+  status: zod
+    .enum([
+      "not_contacted",
+      "contacted",
+      "follow_up",
+      "proposal_sent",
+      "converted",
+      "not_interested",
+    ])
+    .optional(),
+  dealValue: zod.number().nullish(),
+  decisionMaker: zod.string().nullish(),
+  lostReason: zod.string().nullish(),
+});
+
+export const UpdateBusinessPipelineResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  address: zod.string().optional(),
+  phone: zod.string().optional(),
+  website: zod.string().optional(),
+  sector: zod.string(),
+  rating: zod.number().optional(),
+  reviewCount: zod.number().optional(),
+  notes: zod.string().optional(),
+  mapsUrl: zod.string().optional(),
+  latitude: zod.number().optional(),
+  longitude: zod.number().optional(),
+  priority: zod.enum(["high", "medium", "low"]),
+  status: zod.enum([
+    "not_contacted",
+    "contacted",
+    "follow_up",
+    "proposal_sent",
+    "converted",
+    "not_interested",
+  ]),
+  callType: zod.enum(["walk_in", "cold_call"]).optional(),
+  routeDay: zod.number().optional(),
+  isBonus: zod.boolean(),
+  buildingGroup: zod.string().optional(),
+  dealValue: zod
+    .number()
+    .nullish()
+    .describe("Estimated deal value in whole dollars"),
+  decisionMaker: zod.string().nullish(),
+  lostReason: zod.string().nullish(),
+  stageChangedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+  lastVisitRepId: zod.string().nullish(),
+  lastVisitAt: zod.string().nullish(),
+  lastVisitOutcome: zod.string().nullish(),
+  visitCount: zod.number().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });
 
 /**
@@ -204,7 +312,7 @@ export const ListVisitsForBusinessResponseItem = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -224,7 +332,7 @@ export const ListVisitsResponseItem = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -240,7 +348,7 @@ export const CreateVisitBody = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   repId: zod.string().optional(),
 });
 
@@ -259,7 +367,7 @@ export const GetVisitResponse = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   notes: zod.array(
     zod.object({
       id: zod.number(),
@@ -322,7 +430,7 @@ export const UpdateVisitBody = zod.object({
     .optional(),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
 });
 
 export const UpdateVisitResponse = zod.object({
@@ -333,7 +441,7 @@ export const UpdateVisitResponse = zod.object({
   outcome: zod.enum(["positive", "neutral", "negative", "follow_up_needed"]),
   contactName: zod.string().nullish(),
   contactPhone: zod.string().nullish(),
-  nextActionDate: zod.coerce.date().optional(),
+  nextActionDate: zod.coerce.date().nullish(),
   noteCount: zod.number(),
   mediaCount: zod.number(),
   createdAt: zod.coerce.date(),
@@ -543,12 +651,12 @@ export const ListEventsQueryParams = zod.object({
 export const ListEventsResponseItem = zod.object({
   id: zod.number(),
   type: zod.string(),
-  entityType: zod.string().nullable().optional(),
-  entityId: zod.number().nullable().optional(),
-  businessId: zod.number().nullable().optional(),
-  visitId: zod.number().nullable().optional(),
-  payload: zod.record(zod.string(), zod.unknown()).nullable().optional(),
-  repId: zod.string().nullable().optional(),
+  entityType: zod.string().nullish(),
+  entityId: zod.number().nullish(),
+  businessId: zod.number().nullish(),
+  visitId: zod.number().nullish(),
+  payload: zod.record(zod.string(), zod.unknown()).nullish(),
+  repId: zod.string().nullish(),
   source: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -598,6 +706,187 @@ export const GetRecentActivityResponse = zod.array(
 );
 
 /**
+ * @summary Pipeline funnel, deal value, win rate and rep leaderboard
+ */
+export const GetPipelineStatsResponse = zod.object({
+  funnel: zod.array(
+    zod.object({
+      status: zod.string(),
+      count: zod.number(),
+      dealValue: zod
+        .number()
+        .describe("Sum of dealValue for prospects in this stage"),
+    }),
+  ),
+  openPipelineValue: zod
+    .number()
+    .describe("Sum of dealValue across open (non-terminal) stages"),
+  weightedPipelineValue: zod
+    .number()
+    .describe("dealValue weighted by stage close probability"),
+  wonCount: zod.number(),
+  lostCount: zod.number(),
+  winRate: zod
+    .number()
+    .nullish()
+    .describe("won \/ (won + lost), 0-1; null when nothing closed yet"),
+  wonThisMonth: zod.number(),
+  wonValueThisMonth: zod.number(),
+  avgDaysToClose: zod.number().nullish(),
+  visitsToday: zod.number(),
+  visitsThisWeek: zod.number(),
+  contactRate: zod
+    .number()
+    .nullish()
+    .describe("Share of visits where a contact name was captured, 0-1"),
+  followUpsDue: zod.number().describe("Overdue + due-today follow-ups"),
+  staleLeads: zod.number(),
+  leaderboard: zod
+    .array(
+      zod.object({
+        repId: zod.string(),
+        visitsThisWeek: zod.number(),
+        visitsThisMonth: zod.number(),
+        wonThisMonth: zod.number(),
+        wonValueThisMonth: zod.number(),
+        openFollowUps: zod.number(),
+      }),
+    )
+    .describe("Only populated for sales leaders and above"),
+});
+
+/**
+ * One item per open prospect that needs a touch. Reps see their own queue; sales leaders and above see the whole team's.
+
+ * @summary The rep's follow-up queue (overdue, due today, upcoming, stale)
+ */
+export const listFollowUpsQueryStaleDaysDefault = 14;
+
+export const ListFollowUpsQueryParams = zod.object({
+  staleDays: zod.coerce
+    .number()
+    .default(listFollowUpsQueryStaleDaysDefault)
+    .describe("Days without a visit before an open prospect counts as stale"),
+});
+
+export const ListFollowUpsResponse = zod.object({
+  overdue: zod.array(
+    zod.object({
+      businessId: zod.number(),
+      businessName: zod.string(),
+      sector: zod.string(),
+      address: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      status: zod.string(),
+      priority: zod.string(),
+      dealValue: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      contactPhone: zod.string().nullish(),
+      lastVisitId: zod.number().nullish(),
+      lastVisitAt: zod.coerce.date().nullish(),
+      lastOutcome: zod.string().nullish(),
+      repId: zod.string().nullish(),
+      dueAt: zod.coerce
+        .date()
+        .nullish()
+        .describe(
+          "The promised next-action date from the latest visit, if any",
+        ),
+      bucket: zod.enum(["overdue", "today", "upcoming", "stale"]),
+      daysSinceVisit: zod.number().nullish(),
+      daysInStage: zod.number().nullish(),
+    }),
+  ),
+  today: zod.array(
+    zod.object({
+      businessId: zod.number(),
+      businessName: zod.string(),
+      sector: zod.string(),
+      address: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      status: zod.string(),
+      priority: zod.string(),
+      dealValue: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      contactPhone: zod.string().nullish(),
+      lastVisitId: zod.number().nullish(),
+      lastVisitAt: zod.coerce.date().nullish(),
+      lastOutcome: zod.string().nullish(),
+      repId: zod.string().nullish(),
+      dueAt: zod.coerce
+        .date()
+        .nullish()
+        .describe(
+          "The promised next-action date from the latest visit, if any",
+        ),
+      bucket: zod.enum(["overdue", "today", "upcoming", "stale"]),
+      daysSinceVisit: zod.number().nullish(),
+      daysInStage: zod.number().nullish(),
+    }),
+  ),
+  upcoming: zod.array(
+    zod.object({
+      businessId: zod.number(),
+      businessName: zod.string(),
+      sector: zod.string(),
+      address: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      status: zod.string(),
+      priority: zod.string(),
+      dealValue: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      contactPhone: zod.string().nullish(),
+      lastVisitId: zod.number().nullish(),
+      lastVisitAt: zod.coerce.date().nullish(),
+      lastOutcome: zod.string().nullish(),
+      repId: zod.string().nullish(),
+      dueAt: zod.coerce
+        .date()
+        .nullish()
+        .describe(
+          "The promised next-action date from the latest visit, if any",
+        ),
+      bucket: zod.enum(["overdue", "today", "upcoming", "stale"]),
+      daysSinceVisit: zod.number().nullish(),
+      daysInStage: zod.number().nullish(),
+    }),
+  ),
+  stale: zod.array(
+    zod.object({
+      businessId: zod.number(),
+      businessName: zod.string(),
+      sector: zod.string(),
+      address: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      status: zod.string(),
+      priority: zod.string(),
+      dealValue: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      contactPhone: zod.string().nullish(),
+      lastVisitId: zod.number().nullish(),
+      lastVisitAt: zod.coerce.date().nullish(),
+      lastOutcome: zod.string().nullish(),
+      repId: zod.string().nullish(),
+      dueAt: zod.coerce
+        .date()
+        .nullish()
+        .describe(
+          "The promised next-action date from the latest visit, if any",
+        ),
+      bucket: zod.enum(["overdue", "today", "upcoming", "stale"]),
+      daysSinceVisit: zod.number().nullish(),
+      daysInStage: zod.number().nullish(),
+    }),
+  ),
+  counts: zod.object({
+    overdue: zod.number(),
+    today: zod.number(),
+    upcoming: zod.number(),
+    stale: zod.number(),
+  }),
+});
+
+/**
  * @summary Get visit counts grouped by business sector
  */
 export const GetVisitsBySectorResponseItem = zod.object({
@@ -633,6 +922,7 @@ export const GetRoutesByDayResponseItem = zod.object({
         "not_contacted",
         "contacted",
         "follow_up",
+        "proposal_sent",
         "converted",
         "not_interested",
       ]),

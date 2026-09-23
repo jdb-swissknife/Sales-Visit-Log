@@ -28,6 +28,16 @@ export interface Business {
   routeDay?: number;
   isBonus: boolean;
   buildingGroup?: string;
+  /** Estimated deal value in whole dollars */
+  dealValue?: number | null;
+  decisionMaker?: string | null;
+  lostReason?: string | null;
+  stageChangedAt?: Date | null;
+  closedAt?: Date | null;
+  lastVisitRepId?: string | null;
+  lastVisitAt?: string | null;
+  lastVisitOutcome?: string | null;
+  visitCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }

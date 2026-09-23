@@ -66,7 +66,14 @@ All three must pass. The test suite needs a live Postgres (`DATABASE_URL`).
 - Map page must never render a blank canvas; always fall back to a usable list.
   See `PROJECT-CONTEXT.md` (MapLibre robustness) before editing the map.
 - Regenerate codegen after changing the OpenAPI spec; don't hand-edit generated
-  `api-zod` / `api-client-react` files.
+  `api-zod` / `api-client-react` files. If a response needs to accept `null`,
+  mark the field `nullable: true` in `openapi.yaml` (that is what makes orval
+  emit `.nullish()`); a hand-patched `.nullish()` is lost on the next regen.
+- **Pipeline rules live in one place:** `artifacts/api-server/src/lib/pipeline.ts`
+  (pure) + `lib/stage.ts` (DB). Never set `businesses.status` directly from a
+  route — go through `moveStage()` / `applyVisitToStage()` so `stageChangedAt`,
+  `closedAt` and the `business.stage_changed` event stay consistent. Logging a
+  visit never demotes a prospect (won/lost stay won/lost).
 
 ## Context cost note (user preference)
 

@@ -22,6 +22,17 @@ export const businessesTable = pgTable("businesses", {
   latitude: real("latitude"),
   longitude: real("longitude"),
   geocodedAt: timestamp("geocoded_at", { withTimezone: true }),
+  // ── Pipeline / deal tracking ────────────────────────────────────────────
+  /** Estimated value of the deal in whole dollars (contract or annual value). */
+  dealValue: real("deal_value"),
+  /** Name (and optionally role) of the person who can sign. */
+  decisionMaker: text("decision_maker"),
+  /** Why the deal was lost; set when status becomes not_interested. */
+  lostReason: text("lost_reason"),
+  /** When `status` last changed — drives "days in stage" and stale-lead detection. */
+  stageChangedAt: timestamp("stage_changed_at", { withTimezone: true }),
+  /** When the deal reached a terminal stage (converted / not_interested). */
+  closedAt: timestamp("closed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

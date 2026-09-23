@@ -22,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   not_contacted: "#64748b", // slate
   contacted: "#3b82f6", // blue
   follow_up: "#f59e0b", // amber
+  proposal_sent: "#8b5cf6", // violet
   converted: "#22c55e", // green
   not_interested: "#ef4444", // red
 };
@@ -30,6 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   not_contacted: "Not contacted",
   contacted: "Contacted",
   follow_up: "Follow up",
+  proposal_sent: "Proposal sent",
   converted: "Converted",
   not_interested: "Not interested",
 };
