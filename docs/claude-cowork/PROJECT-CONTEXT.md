@@ -118,3 +118,60 @@ quick-log drawer), never a blank canvas. Clean up: `clearTimeout`,
 **Why:** a field-sales app runs on varied mobile devices/browsers where WebGL or
 tile loading can fail; a blank map is useless, a fallback list keeps the user
 working.
+
+---
+
+## 4. Pipeline, follow-up queue and stage rules (feat/pipeline-followups)
+
+### Data model additions (`lib/db/src/schema/businesses.ts`)
+`deal_value` (real, whole dollars), `decision_maker`, `lost_reason`,
+`stage_changed_at`, `closed_at`. Status enum gained `proposal_sent`:
+
+```
+not_contacted → contacted → follow_up → proposal_sent → converted
+                                                      ↘ not_interested
+```
+
+### Rules (`artifacts/api-server/src/lib/pipeline.ts`, pure, unit-tested)
+- `deriveStageAfterVisit(current, visit)` — a visit promotes to `contacted`, or
+  to `follow_up` when the outcome is `follow_up_needed` / a `nextActionDate` is
+  set. **Never demotes**: terminal stages and `proposal_sent` are untouched.
+  (Previously every visit reset the prospect to `contacted`, which un-won deals.)
+- `stageTransition(from, to)` — stamps `stageChangedAt`; `closedAt` for terminal
+  stages, cleared on reopen.
+- `classifyFollowUp({dueAt, lastVisitAt, staleDays})` → `overdue | today |
+  upcoming (≤7d) | stale (no promise, last visit ≥ staleDays) | null`.
+  Only the **latest** visit's `nextActionDate` counts (a newer visit supersedes
+  an older promise — same rule as the callback cron).
+- `STAGE_WIN_PROBABILITY` drives the weighted pipeline value; deliberately
+  conservative, tune with real data.
+
+### Endpoints
+- `PATCH /api/businesses/:id/pipeline` — partial update of `status`,
+  `dealValue`, `decisionMaker`, `lostReason`. `PUT /businesses/:id` with a
+  changed `status` also routes through `moveStage`.
+- `GET /api/followups?staleDays=14` — buckets + counts. Reps see prospects whose
+  latest visit is theirs; `sales_leader`+ see the team.
+- `GET /api/stats/pipeline` — funnel (team-wide; prospects are shared), open +
+  weighted value, win rate, won this month, avg days to close, activity
+  (rep-scoped), `followUpsDue`, `staleLeads`, and a `leaderboard` populated only
+  for `sales_leader`+ (wins attributed to the rep of the last visit before close).
+
+### Events for Hermes
+`business.stage_changed` with payload `{ from, to, reason: "visit" | "manual",
+businessName }`, `repId`, `visitId` (when caused by a visit). Good trigger for a
+future "deal stalled in proposal_sent for N days" coaching behavior.
+
+### UI
+- `/followups` (in mobile bottom nav, replacing Routes there; Routes stays in
+  the desktop sidebar). Overdue → Due today → This week → Going cold. Per item:
+  Log visit / Call / Directions, plus a menu to reschedule (updates the latest
+  visit's `nextActionDate`) or mark won/lost.
+- Business detail: `PipelineCard` (stage select, deal value, decision maker,
+  lost reason picker when lost, time-in-stage).
+- Overview: pipeline stat tiles, funnel, team leaderboard for leaders.
+- Nav badge = overdue + due today, polled every 5 min.
+
+### Tests
+`tests/pipeline-rules.test.ts` (pure, no DB) and
+`tests/followups-and-stage.test.ts` (DB). Suite total: 35.

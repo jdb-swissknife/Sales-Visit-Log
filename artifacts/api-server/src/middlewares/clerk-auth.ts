@@ -166,10 +166,10 @@ export async function clerkContext(req: Request, _res: Response, next: NextFunct
   if (!req.userId) {
     const token = extractToken(req);
     if (token) {
-      logger.info("Clerk token received", { len: token.length, head: token.slice(0, 30) });
+      logger.debug({ len: token.length }, "Clerk token received");
       const payload = await verifyToken(token);
       if (payload) {
-        logger.info("Clerk token verified", { sub: payload.sub });
+        logger.debug({ sub: payload.sub }, "Clerk token verified");
         req.userId = payload.sub;
         const role = payload.public_metadata?.role;
         req.userRole = (typeof role === "string" && ["owner", "admin", "sales_leader", "rep"].includes(role))

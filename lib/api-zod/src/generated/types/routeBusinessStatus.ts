@@ -13,6 +13,7 @@ export const RouteBusinessStatus = {
   not_contacted: "not_contacted",
   contacted: "contacted",
   follow_up: "follow_up",
+  proposal_sent: "proposal_sent",
   converted: "converted",
   not_interested: "not_interested",
 } as const;

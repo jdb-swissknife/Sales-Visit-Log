@@ -135,6 +135,37 @@ paths:
         "204":
           description: Deleted
 
+  /businesses/{id}/pipeline:
+    patch:
+      operationId: updateBusinessPipeline
+      tags: [businesses]
+      summary: Move a prospect through the pipeline / record deal details
+      description: >
+        Partial update of pipeline fields only. A status change stamps
+        `stageChangedAt` (and `closedAt` for terminal stages) and logs a
+        `business.stage_changed` event so the AI agent can see it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePipelineBody"
+      responses:
+        "200":
+          description: Updated business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+        "404":
+          description: Not found
+
   /businesses/{id}/visits:
     get:
       operationId: listVisitsForBusiness
@@ -523,6 +554,43 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityItem"
 
+  /stats/pipeline:
+    get:
+      operationId: getPipelineStats
+      tags: [stats]
+      summary: Pipeline funnel, deal value, win rate and rep leaderboard
+      responses:
+        "200":
+          description: Pipeline stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineStats"
+
+  /followups:
+    get:
+      operationId: listFollowUps
+      tags: [followups]
+      summary: The rep's follow-up queue (overdue, due today, upcoming, stale)
+      description: >
+        One item per open prospect that needs a touch. Reps see their own
+        queue; sales leaders and above see the whole team's.
+      parameters:
+        - name: staleDays
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 14
+          description: Days without a visit before an open prospect counts as stale
+      responses:
+        "200":
+          description: Follow-up queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowUpQueue"
+
   /stats/by-sector:
     get:
       operationId: getVisitsBySector
@@ -595,7 +663,7 @@ components:
           enum: [high, medium, low]
         status:
           type: string
-          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+          enum: [not_contacted, contacted, follow_up, proposal_sent, converted, not_interested]
         callType:
           type: string
           enum: [walk_in, cold_call]
@@ -605,6 +673,35 @@ components:
           type: boolean
         buildingGroup:
           type: string
+        dealValue:
+          type: number
+          nullable: true
+          description: Estimated deal value in whole dollars
+        decisionMaker:
+          type: string
+          nullable: true
+        lostReason:
+          type: string
+          nullable: true
+        stageChangedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastVisitRepId:
+          type: string
+          nullable: true
+        lastVisitAt:
+          type: string
+          nullable: true
+        lastVisitOutcome:
+          type: string
+          nullable: true
+        visitCount:
+          type: integer
         createdAt:
           type: string
           format: date-time
@@ -657,7 +754,7 @@ components:
           enum: [high, medium, low]
         status:
           type: string
-          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+          enum: [not_contacted, contacted, follow_up, proposal_sent, converted, not_interested]
         callType:
           type: string
           enum: [walk_in, cold_call]
@@ -682,11 +779,14 @@ components:
           enum: [positive, neutral, negative, follow_up_needed]
         contactName:
           type: string
+          nullable: true
         contactPhone:
           type: string
+          nullable: true
         nextActionDate:
           type: string
           format: date-time
+          nullable: true
         noteCount:
           type: integer
         mediaCount:
@@ -720,11 +820,14 @@ components:
           enum: [positive, neutral, negative, follow_up_needed]
         contactName:
           type: string
+          nullable: true
         contactPhone:
           type: string
+          nullable: true
         nextActionDate:
           type: string
           format: date-time
+          nullable: true
         notes:
           type: array
           items:
@@ -758,11 +861,14 @@ components:
           enum: [positive, neutral, negative, follow_up_needed]
         contactName:
           type: string
+          nullable: true
         contactPhone:
           type: string
+          nullable: true
         nextActionDate:
           type: string
           format: date-time
+          nullable: true
         repId:
           type: string
       required:
@@ -781,11 +887,14 @@ components:
           enum: [positive, neutral, negative, follow_up_needed]
         contactName:
           type: string
+          nullable: true
         contactPhone:
           type: string
+          nullable: true
         nextActionDate:
           type: string
           format: date-time
+          nullable: true
 
     Note:
       type: object
@@ -1018,6 +1127,207 @@ components:
         - count
         - positiveCount
 
+    UpdatePipelineBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_contacted, contacted, follow_up, proposal_sent, converted, not_interested]
+        dealValue:
+          type: number
+          nullable: true
+        decisionMaker:
+          type: string
+          nullable: true
+        lostReason:
+          type: string
+          nullable: true
+
+    FollowUpItem:
+      type: object
+      properties:
+        businessId:
+          type: integer
+        businessName:
+          type: string
+        sector:
+          type: string
+        address:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        dealValue:
+          type: number
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        lastVisitId:
+          type: integer
+          nullable: true
+        lastVisitAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastOutcome:
+          type: string
+          nullable: true
+        repId:
+          type: string
+          nullable: true
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The promised next-action date from the latest visit, if any
+        bucket:
+          type: string
+          enum: [overdue, today, upcoming, stale]
+        daysSinceVisit:
+          type: integer
+          nullable: true
+        daysInStage:
+          type: integer
+          nullable: true
+      required:
+        - businessId
+        - businessName
+        - sector
+        - status
+        - priority
+        - bucket
+
+    FollowUpQueue:
+      type: object
+      properties:
+        overdue:
+          type: array
+          items:
+            $ref: "#/components/schemas/FollowUpItem"
+        today:
+          type: array
+          items:
+            $ref: "#/components/schemas/FollowUpItem"
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/FollowUpItem"
+        stale:
+          type: array
+          items:
+            $ref: "#/components/schemas/FollowUpItem"
+        counts:
+          type: object
+          properties:
+            overdue:
+              type: integer
+            today:
+              type: integer
+            upcoming:
+              type: integer
+            stale:
+              type: integer
+          required: [overdue, today, upcoming, stale]
+      required: [overdue, today, upcoming, stale, counts]
+
+    PipelineStage:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+        dealValue:
+          type: number
+          description: Sum of dealValue for prospects in this stage
+      required: [status, count, dealValue]
+
+    RepLeaderboardEntry:
+      type: object
+      properties:
+        repId:
+          type: string
+        visitsThisWeek:
+          type: integer
+        visitsThisMonth:
+          type: integer
+        wonThisMonth:
+          type: integer
+        wonValueThisMonth:
+          type: number
+        openFollowUps:
+          type: integer
+      required: [repId, visitsThisWeek, visitsThisMonth, wonThisMonth, wonValueThisMonth, openFollowUps]
+
+    PipelineStats:
+      type: object
+      properties:
+        funnel:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineStage"
+        openPipelineValue:
+          type: number
+          description: Sum of dealValue across open (non-terminal) stages
+        weightedPipelineValue:
+          type: number
+          description: dealValue weighted by stage close probability
+        wonCount:
+          type: integer
+        lostCount:
+          type: integer
+        winRate:
+          type: number
+          nullable: true
+          description: won / (won + lost), 0-1; null when nothing closed yet
+        wonThisMonth:
+          type: integer
+        wonValueThisMonth:
+          type: number
+        avgDaysToClose:
+          type: number
+          nullable: true
+        visitsToday:
+          type: integer
+        visitsThisWeek:
+          type: integer
+        contactRate:
+          type: number
+          nullable: true
+          description: Share of visits where a contact name was captured, 0-1
+        followUpsDue:
+          type: integer
+          description: Overdue + due-today follow-ups
+        staleLeads:
+          type: integer
+        leaderboard:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepLeaderboardEntry"
+          description: Only populated for sales leaders and above
+      required:
+        - funnel
+        - openPipelineValue
+        - weightedPipelineValue
+        - wonCount
+        - lostCount
+        - wonThisMonth
+        - wonValueThisMonth
+        - visitsToday
+        - visitsThisWeek
+        - followUpsDue
+        - staleLeads
+        - leaderboard
+
     RouteBusiness:
       type: object
       properties:
@@ -1046,7 +1356,7 @@ components:
           enum: [high, medium, low]
         status:
           type: string
-          enum: [not_contacted, contacted, follow_up, converted, not_interested]
+          enum: [not_contacted, contacted, follow_up, proposal_sent, converted, not_interested]
         routeDay:
           type: integer
         isBonus:

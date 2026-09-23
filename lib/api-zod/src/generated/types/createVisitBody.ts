@@ -11,8 +11,8 @@ export interface CreateVisitBody {
   businessId: number;
   visitedAt: Date;
   outcome: CreateVisitBodyOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: Date;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: Date | null;
   repId?: string;
 }

@@ -20,6 +20,7 @@ import NewVisit from "@/pages/visits/new";
 import RoutesPage from "@/pages/routes/index";
 import ScriptPage from "@/pages/script/index";
 import ColdCallPage from "@/pages/coldcall/index";
+import FollowUpsPage from "@/pages/followups/index";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function AuthenticatedApp() {
       <Switch>
         <Route path="/" component={MapPage} />
         <Route path="/dashboard" component={Dashboard} />
+        <Route path="/followups" component={FollowUpsPage} />
 
         <Route path="/businesses" component={BusinessesList} />
         <Route path="/businesses/new" component={NewBusiness} />

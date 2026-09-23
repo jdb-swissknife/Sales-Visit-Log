@@ -25,13 +25,17 @@ import type {
   CreateVisitBody,
   DayRoute,
   Event,
+  FollowUpQueue,
   HealthStatus,
   ListBusinessesParams,
   ListEventsParams,
+  ListFollowUpsParams,
   Media,
   Note,
+  PipelineStats,
   SectorCount,
   SummaryStats,
+  UpdatePipelineBody,
   UpdateVisitBody,
   UploadMediaBody,
   Visit,
@@ -558,6 +562,95 @@ export const useDeleteBusiness = <
   TContext
 > => {
   return useMutation(getDeleteBusinessMutationOptions(options));
+};
+
+/**
+ * Partial update of pipeline fields only. A status change stamps `stageChangedAt` (and `closedAt` for terminal stages) and logs a `business.stage_changed` event so the AI agent can see it.
+
+ * @summary Move a prospect through the pipeline / record deal details
+ */
+export const getUpdateBusinessPipelineUrl = (id: number) => {
+  return `/api/businesses/${id}/pipeline`;
+};
+
+export const updateBusinessPipeline = async (
+  id: number,
+  updatePipelineBody: UpdatePipelineBody,
+  options?: RequestInit,
+): Promise<Business> => {
+  return customFetch<Business>(getUpdateBusinessPipelineUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePipelineBody),
+  });
+};
+
+export const getUpdateBusinessPipelineMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBusinessPipeline>>,
+    TError,
+    { id: number; data: BodyType<UpdatePipelineBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBusinessPipeline>>,
+  TError,
+  { id: number; data: BodyType<UpdatePipelineBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBusinessPipeline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBusinessPipeline>>,
+    { id: number; data: BodyType<UpdatePipelineBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateBusinessPipeline(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBusinessPipelineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBusinessPipeline>>
+>;
+export type UpdateBusinessPipelineMutationBody = BodyType<UpdatePipelineBody>;
+export type UpdateBusinessPipelineMutationError = ErrorType<void>;
+
+/**
+ * @summary Move a prospect through the pipeline / record deal details
+ */
+export const useUpdateBusinessPipeline = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBusinessPipeline>>,
+    TError,
+    { id: number; data: BodyType<UpdatePipelineBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBusinessPipeline>>,
+  TError,
+  { id: number; data: BodyType<UpdatePipelineBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBusinessPipelineMutationOptions(options));
 };
 
 /**
@@ -2166,6 +2259,177 @@ export function useGetRecentActivity<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRecentActivityQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Pipeline funnel, deal value, win rate and rep leaderboard
+ */
+export const getGetPipelineStatsUrl = () => {
+  return `/api/stats/pipeline`;
+};
+
+export const getPipelineStats = async (
+  options?: RequestInit,
+): Promise<PipelineStats> => {
+  return customFetch<PipelineStats>(getGetPipelineStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPipelineStatsQueryKey = () => {
+  return [`/api/stats/pipeline`] as const;
+};
+
+export const getGetPipelineStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPipelineStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPipelineStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPipelineStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPipelineStats>>
+  > = ({ signal }) => getPipelineStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPipelineStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPipelineStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPipelineStats>>
+>;
+export type GetPipelineStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Pipeline funnel, deal value, win rate and rep leaderboard
+ */
+
+export function useGetPipelineStats<
+  TData = Awaited<ReturnType<typeof getPipelineStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPipelineStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPipelineStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * One item per open prospect that needs a touch. Reps see their own queue; sales leaders and above see the whole team's.
+
+ * @summary The rep's follow-up queue (overdue, due today, upcoming, stale)
+ */
+export const getListFollowUpsUrl = (params?: ListFollowUpsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/followups?${stringifiedParams}`
+    : `/api/followups`;
+};
+
+export const listFollowUps = async (
+  params?: ListFollowUpsParams,
+  options?: RequestInit,
+): Promise<FollowUpQueue> => {
+  return customFetch<FollowUpQueue>(getListFollowUpsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFollowUpsQueryKey = (params?: ListFollowUpsParams) => {
+  return [`/api/followups`, ...(params ? [params] : [])] as const;
+};
+
+export const getListFollowUpsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFollowUps>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListFollowUpsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFollowUps>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFollowUpsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFollowUps>>> = ({
+    signal,
+  }) => listFollowUps(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFollowUps>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFollowUpsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFollowUps>>
+>;
+export type ListFollowUpsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary The rep's follow-up queue (overdue, due today, upcoming, stale)
+ */
+
+export function useListFollowUps<
+  TData = Awaited<ReturnType<typeof listFollowUps>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListFollowUpsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFollowUps>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFollowUpsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

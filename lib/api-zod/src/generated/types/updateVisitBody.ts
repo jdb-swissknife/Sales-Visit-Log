@@ -10,7 +10,7 @@ import type { UpdateVisitBodyOutcome } from "./updateVisitBodyOutcome";
 export interface UpdateVisitBody {
   visitedAt?: Date;
   outcome?: UpdateVisitBodyOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: Date;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: Date | null;
 }

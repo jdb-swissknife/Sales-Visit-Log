@@ -15,9 +15,9 @@ export interface VisitDetail {
   businessName?: string;
   visitedAt: Date;
   outcome: VisitDetailOutcome;
-  contactName?: string;
-  contactPhone?: string;
-  nextActionDate?: Date;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  nextActionDate?: Date | null;
   notes: Note[];
   media: Media[];
   createdAt: Date;

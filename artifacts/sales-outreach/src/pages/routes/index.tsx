@@ -11,6 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
   not_contacted: "bg-muted text-muted-foreground",
   contacted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
   follow_up: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
+  proposal_sent: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-300",
   converted: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
   not_interested: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 };

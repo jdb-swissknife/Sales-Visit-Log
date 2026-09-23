@@ -10,6 +10,7 @@ import routesRouter from "./routes";
 import eventsRouter from "./events";
 import agentRouter from "./agent";
 import suggestionsRouter from "./suggestions";
+import followupsRouter from "./followups";
 import { requireAuth } from "../middlewares/clerk-auth";
 
 const router: IRouter = Router();
@@ -33,5 +34,6 @@ router.use(statsRouter);
 router.use(routesRouter);
 router.use(eventsRouter);
 router.use(suggestionsRouter);
+router.use(followupsRouter);
 
 export default router;
