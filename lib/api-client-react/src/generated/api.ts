@@ -1510,7 +1510,7 @@ export const uploadMedia = async (
   const formData = new FormData();
   formData.append(`file`, uploadMediaBody.file);
   formData.append(`type`, uploadMediaBody.type);
-  if (uploadMediaBody.caption !== undefined) {
+  if (uploadMediaBody.caption != null) {
     formData.append(`caption`, uploadMediaBody.caption);
   }
 

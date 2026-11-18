@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, gte, and } from "drizzle-orm";
 import { db, businessesTable, visitsTable, notesTable, mediaTable } from "@workspace/db";
-import { canSeeAllReps } from "../middlewares/clerk-auth";
+import { canSeeAllReps } from "../middlewares/local-auth";
 import {
   GetSummaryStatsResponse,
   GetRecentActivityResponse,

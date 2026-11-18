@@ -1,0 +1,57 @@
+SVL local authentication deployment
+===================================
+
+Public URL: https://svl.trustmvs.com
+Local proxy: 8097 -> API: 8094
+Tunnel: trustmvs-main (2b689c95-7221-4b9d-baf1-460ae091ad16)
+
+Local account: jb@trustmvs.com (owner)
+The existing user identity was retained; no visits, businesses, or rep IDs were migrated or rewritten.
+Persistent credential store: /root/.config/svl/local-auth.json (0600)
+Initial sign-in instructions: /root/.config/svl/sign-in.txt (0600)
+Do not commit these files or expose them via the static server.
+The initial-password instruction file is not automatically updated after the user changes their password.
+
+Authentication
+--------------
+- No Clerk runtime, Clerk cookies, Clerk keys, or test-user header bypass.
+- Passwords use salted scrypt hashes, never plaintext in the account store.
+- Seven-day HMAC-signed Secure/HttpOnly/SameSite=Lax cookie, host-only.
+- Roles and names come from the server-side account file, not browser input.
+- Password changes invalidate older signed sessions through sessionVersion.
+- Sign-out clears the browser cookie. A previously copied signed cookie remains valid until expiry or password rotation; sessions are not a central revocation database.
+- Password changes are available at /account after sign-in.
+- No public self-registration or email password-reset flow.
+- Login is rate-limited; mutating browser API calls are same-origin guarded.
+- API data is no-store; old api-cache is deleted and new service worker does not cache API responses.
+
+Start/recovery
+--------------
+/usr/local/bin/svl-api-server
+/usr/local/bin/svl-server
+Existing @reboot and /root/scripts/mv-watchdog.sh coverage retained.
+Configuration is loaded automatically on boot; losing the local-auth.json file fails closed.
+Credentials and session signing key survive process restarts in that file.
+
+Verification performed
+----------------------
+- API and frontend production builds succeeded.
+- Frontend TypeScript check passed.
+- tests/local-auth.test.ts passed (login failure/success, existing user ID, unauthorized denial, test-header denial, cookie flags, tampering/expiry, password rotation, logout cookie, throttling).
+- Actual public browser test in a fresh isolated context passed: visible sign-in, wrong password error, login, account screen, sign-out.
+- Public authenticated browser API returned 23 visits and 106 businesses.
+- No JavaScript runtime exceptions and zero Clerk requests during successful browser test.
+- Unauthenticated API requests returned 401, cross-site login returned 403.
+- Existing backend type errors remain outside the auth changes: src/lib/webhooks.ts:110 (role property type), src/routes/coaching.ts:148 and :202 (unknown error.code type). Production bundle builds and the exercised auth/data paths succeed.
+- Existing unrelated working-tree modifications were retained.
+- backup-health PASS: remote=gdrive_jb_trustmvs, owner=jb@trustmvs.com. No rclone configuration or remote files were changed for this deployment.
+
+Diagnostic artifacts (temporary scratch retention)
+-------------------------------------------------
+/root/.hermes/cache/scratch/svl-local-sign-in.png
+/root/.hermes/cache/scratch/svl_local_auth_browser_verify.py
+/root/.hermes/cache/scratch/svl-pre-local-auth (previous deployment files)
+
+Future work
+-----------
+This is basic local sign-in, not a full identity service. Add MFA, centralized session revocation, user management, audit/recovery flows, and a durable encrypted credential-store backup if required. Do not re-enable development header authentication.

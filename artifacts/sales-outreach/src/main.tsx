@@ -1,14 +1,11 @@
 import { createRoot } from "react-dom/client";
-import { ClerkProvider } from "@clerk/react";
+import { LocalAuthProvider } from "@/lib/local-auth";
 import App from "./App";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <ClerkProvider
-    publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
-    appearance={clerkAppearance}
-  >
+  <LocalAuthProvider>
     <App />
-  </ClerkProvider>
+  </LocalAuthProvider>
 );

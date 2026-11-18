@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import storageRouter from "./storage";
 import businessesRouter from "./businesses";
 import visitsRouter from "./visits";
@@ -11,21 +12,22 @@ import eventsRouter from "./events";
 import agentRouter from "./agent";
 import suggestionsRouter from "./suggestions";
 import coachingRouter from "./coaching";
-import { requireAuth } from "../middlewares/clerk-auth";
+import { requireAuth } from "../middlewares/local-auth";
 
 const router: IRouter = Router();
 
 // ── Open routes (no auth) ────────────────────────────────────────────────────
 router.use(healthRouter);
-router.use(storageRouter);
+router.use(authRouter);
 
 // ── Agent routes (API key auth, applied inside the router) ──────────────────
 router.use(agentRouter);
 
-// ── Authenticated app routes (Clerk session required) ───────────────────────
+// ── Authenticated app routes (local session required) ───────────────────────
 // requireAuth is mounted on the parent router BEFORE the authed sub-routers,
 // so it runs for every request that reaches them.
 router.use(requireAuth);
+router.use(storageRouter);
 router.use(businessesRouter);
 router.use(visitsRouter);
 router.use(notesRouter);

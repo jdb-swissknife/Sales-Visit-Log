@@ -1,119 +1,101 @@
-# SVL Next Session — Bug Testing After Coaching + Navigation Overhaul
+SALES VISIT LOG - NEXT SESSION HANDOFF
+=======================================
 
-## Date: 2026-06-29
-## Status: All 13 tasks deployed. Ready for user testing at svl.mindvaultstudio.net.
+URGENT: API server is DOWN (was killed, not restarted). Site returning 502.
+The proxy server (port 8097) is running but has no backend (port 8090) to proxy to.
 
----
+WHAT WAS BEING FIXED
+====================
+Cards in Field Notes and AI Coaching feed navigate to /visits/:id but the visit
+detail page shows "Visit not found" because the API crashes with a ZodError.
 
-## WHAT SHIPPED THIS SESSION
+ROOT CAUSE
+==========
+GET /api/visits/:id returns 500 ZodError. Nullable DB columns (notes.audioUrl,
+notes.durationSeconds) return null from PostgreSQL, but the Zod response schema
+uses .optional() (accepts undefined, NOT null). Fix: change to .nullish().
 
-5 work streams, 13 tasks committed. Full plan at:
-`/root/projects/sales-visit-log/docs/plans/2026-06-28-ai-coaching-and-navigation-overhaul.md`
+WHAT'S DONE (in source, committed)
+==================================
+1. Field Notes cards: added className="block" to Link wrapper so full card is clickable.
+   File: artifacts/sales-outreach/src/pages/visits/index.tsx (and field-notes components)
 
-### 1. AI Date Extraction from Transcripts (Tasks 1-5)
-- New `callbackDate` field on `StructuredNote` (ISO date YYYY-MM-DD)
-- AI prompt now parses natural language dates ("Jul 8th", "next Friday", "the 23rd") into ISO format
-- Today's date is injected into the LLM message as context
-- Auto-populates `visit.nextActionDate` when a callback date is extracted
-- Shows a "Callback scheduled" badge with calendar icon in the TranscriptionCard
-- 7 unit tests in `artifacts/api-server/tests/callback-date.test.ts` — all passing
-- Files changed:
-  - `artifacts/api-server/src/lib/transcription.ts` (interface, prompt, parsing, visit update, event payload)
-  - `artifacts/sales-outreach/src/components/transcription-card.tsx` (UI badge)
-  - `lib/api-zod/src/generated/types/structuredNote.ts` (generated type)
-  - `lib/api-client-react/src/generated/api.schemas.ts` + `.d.ts` (generated type)
+2. AI Coaching cards: added onClick on entire Card that calls setLocation(actionUrl).
+   File: artifacts/sales-outreach/src/components/coaching-feed.tsx
+   - Changed import from { Link } to { useLocation } from "wouter"
+   - Added const [, setLocation] = useLocation()
+   - handleClick now calls setLocation(s.actionUrl) after marking as acted
 
-### 2. Navigation Fixes (Tasks 6-8)
-- Bell feed action buttons: switched from `<a href>` (full page reload) to wouter `<Link>` (client-side nav)
-- Sheet panel now closes on navigate via `onNavigate` callback
-- Visit detail page: breadcrumb changed to "Field Notes / Business Name" (was just "Back to Business")
-- Files changed:
-  - `artifacts/sales-outreach/src/components/coaching-feed.tsx`
-  - `artifacts/sales-outreach/src/pages/visits/detail.tsx`
+3. Zod schema fix in lib/api-zod/src/generated/api.ts:
+   Changed these fields from .optional() to .nullish():
+   - GetVisitResponse.notes[].content, audioUrl, durationSeconds
+   - GetVisitResponse.media[].mimeType, sizeBytes
+   - ListNotesForVisitResponseItem.content, audioUrl, durationSeconds
+   - UpdateNoteResponse.content, audioUrl, durationSeconds
+   - ListMediaForVisitResponseItem.mimeType, sizeBytes (both schemas)
 
-### 3. Field Notes Redesign (Tasks 9-10)
-- New backend endpoint: `GET /api/visits/grouped` — visits grouped by business with urgency metadata
-  - Returns: businessId, name, address, visitCount, lastVisitAt, lastOutcome, nextActionDate, latestSummary, latestVisitId
-  - Located in `artifacts/api-server/src/routes/visits.ts` (mounted BEFORE `/visits/:id`)
-- Field Notes page (`/visits`) fully rewritten:
-  - Business-grouped cards instead of flat visit list
-  - Sorted by urgency: overdue callbacks first, due soon next, follow-ups needed, then recently visited
-  - Search bar to filter by business name
-  - Left-border color coding: red = overdue, accent = due soon (<=3 days)
-  - Each card shows: business name, outcome badge, visit count, AI summary snippet, last visit date, callback countdown
-- Files changed:
-  - `artifacts/api-server/src/routes/visits.ts` (new endpoint)
-  - `artifacts/sales-outreach/src/pages/visits/index.tsx` (full rewrite)
+   REMAINING in same file still as .optional() (should also be .nullish()):
+   - UpdateNoteBody.content, audioUrl, durationSeconds (line ~392) - request body, lower priority
+   - UpdateBusinessBody and other request bodies - request bodies, lower priority
 
-### 4. Bell Feed Lifecycle (Tasks 11-12)
-- Two tabs: Active (unread + acted/dismissed within 24h) and History (everything)
-- Active tab groups suggestions by type with header labels and counts (Coaching, Callback, Nearby, Debrief)
-- 24h auto-archive: acted/dismissed cards disappear from Active after 24h
-- Files changed:
-  - `artifacts/sales-outreach/src/components/coaching-feed.tsx`
+4. Frontend rebuilt: artifacts/sales-outreach/dist/ has new bundle (index-BShVT_PT.js)
 
----
+WHAT NEEDS TO HAPPEN (in order)
+================================
+1. REBUILD API SERVER BUNDLE
+   The API runs from compiled dist, NOT tsx source. Must rebuild:
+   cd /root/projects/sales-visit-log
+   npm run build  (or whatever builds artifacts/api-server/dist/index.mjs)
+   The key file: artifacts/api-server/dist/index.mjs needs the new .nullish() schemas.
 
-## WHAT'S LIVE RIGHT NOW
+2. RESTART API SERVER
+   cd /root/projects/sales-visit-log
+   source .env
+   node artifacts/api-server/dist/index.mjs
+   (should listen on port 8090)
+   Verify: curl -sS http://127.0.0.1:8090/api/healthz
 
-- Frontend: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs -> :8090 API)
-- API server: localhost:8090 (rebuilt, running, health 200)
-- Proxy server: localhost:8097 (running)
-- DB: sales_visit_log_dev (same seed data as before)
-- Both servers restarted fresh this session
+3. RESTART PROXY SERVER (port 8097) - currently running but pointing at dead backend
+   cd /root/projects/sales-visit-log
+   PORT=8097 API_TARGET=http://127.0.0.1:8090 node artifacts/proxy-server.mjs
 
-### Restart commands if needed:
-```
-# Kill
-ps aux | grep -E "proxy-server|api-server/dist" | grep -v grep | awk '{print $2}' | xargs -r kill
+4. VERIFY the fix:
+   curl -sS -H "x-test-user-id: test-owner" -H "x-test-user-role: owner" \
+     http://127.0.0.1:8090/api/visits/47
+   Should return JSON with visit data, not an HTML ZodError page.
 
-# API server
-cd /root/projects/sales-visit-log && nohup bash -lic 'set -a && . .env && set +a && PORT=8090 node artifacts/api-server/dist/index.mjs' >> /tmp/svl-api-server.log 2>&1 &
+5. TEST in browser:
+   - Navigate to https://svl.mindvaultstudio.net/field-notes
+   - Click any card -> should go to /visits/:id and show visit detail (NOT "Visit not found")
+   - Open coaching feed (bell icon) -> click a card -> should navigate to visit detail
 
-# Proxy server
-cd /root/projects/sales-visit-log && nohup env PORT=8097 API_TARGET=http://127.0.0.1:8090 node artifacts/proxy-server.mjs >> /tmp/svl-server.log 2>&1 &
-```
+6. SERVICE WORKER NOTE: The site has a PWA service worker (vite-plugin-pwa, autoUpdate).
+   After deploy, first reload may serve old cached bundle. A second reload triggers update.
 
-### Health checks:
-```
-curl -sS -o /dev/null -w "proxy: %{http_code}\n" http://127.0.0.1:8097/health
-curl -sS -o /dev/null -w "api: %{http_code}\n" http://127.0.0.1:8090/api/healthz
-```
+CURRENT PROCESS STATE
+=====================
+- Proxy server (port 8097): RUNNING but backend is down, returns 502
+- API server (port 8090): DEAD (was killed, pid was 1474)
+- Vite dev server (port 3097): may still be running (was started for testing, not needed for prod)
 
----
+ENVIRONMENT
+===========
+- Repo: /root/projects/sales-visit-log
+- Frontend: artifacts/sales-outreach/ (Vite + React + wouter + shadcn/ui)
+- API: artifacts/api-server/ (Express + compiled to dist/index.mjs)
+- Proxy: artifacts/proxy-server.mjs (serves static frontend + proxies /api to backend)
+- DB: PostgreSQL, schemas in lib/db/src/schema/
+- Zod schemas: lib/api-zod/src/generated/api.ts (imported directly via workspace link)
+- Production URL: https://svl.mindvaultstudio.net
+- Local proxy: http://127.0.0.1:8097
+- API port: 8090
+- Auth: Clerk (dev keys). API has x-test-user-id header bypass when NODE_ENV != production.
+- Build: pnpm workspace. tsx binary at node_modules/.pnpm/node_modules/.bin/tsx
 
-## TEST THESE FEATURES
-
-1. Field Notes page (/visits) — should show business-grouped cards, urgency-sorted, with search
-2. Bell icon (top-right) — Active/History tabs, type grouping in Active tab
-3. Bell feed action buttons — should navigate without full page reload, sheet should close
-4. Visit detail — breadcrumb "Field Notes / Business Name"
-5. TranscriptionCard — callbackDate badge (only shows if AI extracted a date from transcript)
-6. New voice note with a date mention ("set a meeting for July 15th") — should auto-extract callbackDate and populate nextActionDate
-
----
-
-## KNOWN PRE-EXISTING ISSUES (not from this session)
-
-- Pre-existing typecheck error in `lib/api-client-react/src/generated/api.ts` line 1514 (FormData.append null) — unrelated to this session's work
-- Pre-existing typecheck errors in api-server (clerk-auth.ts, webhooks.ts, coaching.ts) — unrelated
-- Visit 4 had stale 401 transcription errors from old OpenAI key (may still be visible)
-
----
-
-## GIT STATE
-
-All work committed. Last commit: `37efa31` — "fix: add callbackDate to generated types, fix visitedAt ISO serialization, rebuild .d.ts"
-
-To see all commits from this session:
-```
-git log --oneline --since="2026-06-29T00:00:00" 
-```
-
----
-
-## ENVIRONMENT
-- VPS: Hermes kanban + SVL (Go API + Next/Vite frontend)
-- DB: postgres sales_visit_log_dev
-- Prod: svl.mindvaultstudio.net (tunnel -> :8097 proxy-server.mjs -> :8090 API)
-- Project root: /root/projects/sales-visit-log
+ABOUT THE "ACTED ON" STATE
+==========================
+When a coaching card is clicked, it marks the suggestion as "acted". Once acted,
+the card shows "Acted on" badge. John noted this might prevent returning to the
+visit. Consider: should clicking an already-acted card still navigate even though
+it won't show the action button? Currently handleClick always navigates if
+actionUrl exists, regardless of status. So it should work - but worth verifying.

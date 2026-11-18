@@ -50,17 +50,7 @@ export default defineConfig({
               expiration: { maxEntries: 800, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
-          {
-            // API reads: network-first so the app still opens offline
-            urlPattern: /\/api\/.*$/,
-            handler: "NetworkFirst",
-            method: "GET",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
+
         ],
       },
     }),
@@ -98,14 +88,7 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_URL ?? "http://localhost:8090",
         changeOrigin: true,
-        // Dev-only: inject test user header so the API accepts requests
-        // without a Clerk session. Only active in `vite dev`.
-        configure(proxy) {
-          proxy.on("proxyReq", (proxyReq) => {
-            proxyReq.setHeader("x-test-user-id", "test-owner");
-            proxyReq.setHeader("x-test-user-role", "owner");
-          });
-        },
+
       },
     },
     fs: {

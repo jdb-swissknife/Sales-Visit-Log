@@ -1,11 +1,10 @@
 import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Show, SignIn, SignUp, useAuth } from "@clerk/react";
+import { useLocalAuth } from "@/lib/local-auth";
+import { LocalSignIn, LocalAccount } from "@/components/local-sign-in";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { AuthPage } from "@/components/auth-page";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 
@@ -23,24 +22,13 @@ import ColdCallPage from "@/pages/coldcall/index";
 
 const queryClient = new QueryClient();
 
-// Dev-only bypass: skip Clerk auth gate in `vite dev`.
-// The Vite proxy injects x-test-user-id so API calls authenticate as test-owner.
-const DEV_BYPASS_AUTH = import.meta.env.DEV;
-
-/** Wire Clerk's session token into the API client's auth header. */
-function AuthTokenBridge() {
-  const { getToken } = useAuth();
-  setAuthTokenGetter(async () => {
-    const token = await getToken();
-    return token ?? null;
-  });
-  return null;
-}
-
 function AuthenticatedApp() {
   return (
     <Layout>
       <Switch>
+        <Route path="/sign-in"><Redirect to="/" /></Route>
+        <Route path="/sign-up"><Redirect to="/" /></Route>
+        <Route path="/account" component={LocalAccount} />
         <Route path="/" component={MapPage} />
         <Route path="/dashboard" component={Dashboard} />
 
@@ -63,47 +51,10 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  if (DEV_BYPASS_AUTH) {
-    return (
-      <>
-        <AuthTokenBridge />
-        <AuthenticatedApp />
-      </>
-    );
-  }
-  return (
-    <>
-      <AuthTokenBridge />
-      <Show when="signed-out">
-        <Switch>
-          <Route path="/sign-in">
-            <AuthPage>
-              <SignIn
-                routing="path"
-                path="/sign-in"
-                appearance={clerkAppearance}
-              />
-            </AuthPage>
-          </Route>
-          <Route path="/sign-up">
-            <AuthPage>
-              <SignUp
-                routing="path"
-                path="/sign-up"
-                appearance={clerkAppearance}
-              />
-            </AuthPage>
-          </Route>
-          <Route>
-            <Redirect to="/sign-in" />
-          </Route>
-        </Switch>
-      </Show>
-      <Show when="signed-in">
-        <AuthenticatedApp />
-      </Show>
-    </>
-  );
+  const { user, loading } = useLocalAuth();
+  if (loading) return <main className="min-h-screen flex items-center justify-center bg-background text-foreground">Loading Sales Visit Log…</main>;
+  if (!user) return <LocalSignIn />;
+  return <AuthenticatedApp />;
 }
 
 function App() {

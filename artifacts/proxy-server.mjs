@@ -82,7 +82,8 @@ const server = createServer(async (req, res) => {
     if (info.isFile()) {
       const data = await readFile(filePath);
       const mime = MIME[extname(filePath)] ?? "application/octet-stream";
-      const cacheControl = extname(filePath) === ".html" ? "no-cache" : "public, max-age=86400";
+      const cacheControl = extname(filePath) === ".html" || ["/sw.js", "/registerSW.js", "/manifest.webmanifest"].includes(urlPath)
+        ? "no-cache" : "public, max-age=86400";
       res.writeHead(200, { "content-type": mime, "cache-control": cacheControl });
       res.end(data);
       return;

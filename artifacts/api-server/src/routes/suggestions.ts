@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { db, agentSuggestionsTable } from "@workspace/db";
 import { suggestionBus } from "../lib/suggestion-bus";
 import { logEvent } from "../lib/events";
-import { canSeeAllReps } from "../middlewares/clerk-auth";
+import { canSeeAllReps } from "../middlewares/local-auth";
 
 /**
  * App-facing suggestions feed (what the rep sees).

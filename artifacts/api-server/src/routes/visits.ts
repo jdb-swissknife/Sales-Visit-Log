@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, and } from "drizzle-orm";
 import { db, visitsTable, businessesTable, notesTable, mediaTable } from "@workspace/db";
 import { logEvent } from "../lib/events";
-import { canSeeAllReps } from "../middlewares/clerk-auth";
+import { canSeeAllReps } from "../middlewares/local-auth";
 import {
   ListVisitsResponse,
   ListVisitsForBusinessParams,

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { UserButton } from "@clerk/react";
+import { useLocalAuth } from "@/lib/local-auth";
 import { Briefcase, LayoutDashboard, MapPin, Route, MessageSquare, Phone, Map as MapIcon, CloudOff, RefreshCw } from "lucide-react";
 import { useOfflineQueue } from "@/hooks/use-offline-queue";
 import { CoachingFeed } from "@/components/coaching-feed";
@@ -33,6 +33,7 @@ function OfflineStatusBadge() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user, signOut } = useLocalAuth();
 
   const navItems = [
     { href: "/", label: "Map", icon: MapIcon },
@@ -62,13 +63,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3">
           <OfflineStatusBadge />
           <CoachingFeed />
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "h-8 w-8",
-              },
-            }}
-          />
+          <Link href="/account" className="text-xs font-medium" title={user?.username}>Account</Link>
+          <button className="text-xs font-medium underline" onClick={() => void signOut()}>Sign out</button>
         </div>
       </header>
 
